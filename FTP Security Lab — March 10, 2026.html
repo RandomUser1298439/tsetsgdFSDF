@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<!-- saved from url=(0048)file:///C:/Users/datap/Downloads/ftp_lesson.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTP Security Lab — March 10, 2026</title>
+<link href="./FTP Security Lab — March 10, 2026_files/css2" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #0f1319;
+    --panel: #141920;
+    --border: #1e2a38;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --accent3: #39ff14;
+    --text: #c8d8e8;
+    --muted: #5a7080;
+    --warning: #ffb300;
+    --success: #39ff14;
+    --header-font: 'Rajdhani', sans-serif;
+    --mono: 'Share Tech Mono', monospace;
+    --body-font: 'Inconsolata', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body-font);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,229,255,0.015) 2px,
+      rgba(0,229,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--accent);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 0 30px rgba(0,229,255,0.08);
+  }
+
+  .header-badge {
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    letter-spacing: 2px;
+    font-weight: bold;
+  }
+
+  .header h1 {
+    font-family: var(--header-font);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .header h1 span { color: var(--accent); }
+
+  .progress-bar-wrap {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .progress-track {
+    width: 180px;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    overflow: visible;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* MAIN LAYOUT */
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* SIDEBAR NAV */
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 61px;
+    height: calc(100vh - 61px);
+    overflow-y: auto;
+  }
+
+  .nav-section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 0 20px 8px;
+    margin-top: 16px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(0,229,255,0.04); }
+  .nav-item.active { border-left-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+  .nav-item.completed { color: var(--success); }
+  .nav-item.completed .nav-dot { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .nav-item.active .nav-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  /* CONTENT */
+  .content {
+    flex: 1;
+    padding: 40px 48px;
+    max-width: 900px;
+  }
+
+  /* SECTIONS */
+  .section { display: none; animation: fadeIn 0.3s ease; }
+  .section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION HEADER */
+  .section-header {
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-family: var(--header-font);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .section-subtitle {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 14px;
+  }
+
+  /* CONTENT BLOCKS */
+  .info-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 18px 22px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .info-block h3 {
+    font-family: var(--header-font);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .info-block.warning { border-left-color: var(--warning); }
+  .info-block.warning h3 { color: var(--warning); }
+  .info-block.danger { border-left-color: var(--accent2); }
+  .info-block.danger h3 { color: var(--accent2); }
+  .info-block.success { border-left-color: var(--success); }
+  .info-block.success h3 { color: var(--success); }
+
+  /* DIAGRAM */
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    overflow-x: auto;
+  }
+
+  .diagram-title {
+    font-family: var(--header-font);
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    flex-wrap: wrap;
+  }
+
+  .flow-box {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .flow-box.server { border-color: var(--accent2); color: var(--accent2); background: rgba(255,77,109,0.08); }
+  .flow-box.port { border-color: var(--warning); color: var(--warning); background: rgba(255,179,0,0.08); }
+  .flow-box.data { border-color: var(--success); color: var(--success); background: rgba(57,255,20,0.08); }
+
+  .flow-arrow { color: var(--muted); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: #080b0e;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    padding: 20px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    overflow-x: auto;
+    line-height: 1.8;
+  }
+
+  .code-block .comment { color: var(--muted); }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .value { color: var(--success); }
+  .code-block .warning-line { color: var(--accent2); }
+
+  /* TABLE */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+
+  .data-table th {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--header-font);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .data-table td {
+    border: 1px solid var(--border);
+    padding: 9px 14px;
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .data-table tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .tag-critical { color: var(--accent2); font-family: var(--mono); font-size: 11px; }
+  .tag-warn { color: var(--warning); font-family: var(--mono); font-size: 11px; }
+  .tag-ok { color: var(--success); font-family: var(--mono); font-size: 11px; }
+
+  /* QUIZ */
+  .quiz-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .quiz-question {
+    font-family: var(--header-font);
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  .quiz-question .q-num {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+  }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+
+  .quiz-option {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .quiz-option:hover { border-color: var(--accent); background: rgba(0,229,255,0.04); }
+
+  .quiz-option.correct { border-color: var(--success); background: rgba(57,255,20,0.06); color: var(--success); }
+  .quiz-option.incorrect { border-color: var(--accent2); background: rgba(255,77,109,0.06); color: var(--accent2); }
+  .quiz-option.disabled { pointer-events: none; }
+
+  .opt-letter {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .quiz-feedback {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--success);
+    background: rgba(57,255,20,0.05);
+    font-size: 13px;
+    display: none;
+    line-height: 1.6;
+  }
+
+  .quiz-feedback.wrong { border-left-color: var(--accent2); background: rgba(255,77,109,0.05); }
+  .quiz-feedback.show { display: block; }
+
+  /* TEXT INPUT QUIZ */
+  .input-quiz {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .input-quiz textarea, .input-quiz input[type=text] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 12px;
+    resize: vertical;
+    margin-top: 10px;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  .input-quiz textarea:focus, .input-quiz input[type=text]:focus {
+    border-color: var(--accent);
+  }
+
+  .reveal-btn {
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 8px 18px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .reveal-btn:hover { background: var(--accent); color: var(--bg); }
+
+  .answer-reveal {
+    display: none;
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: rgba(57,255,20,0.05);
+    border-left: 3px solid var(--success);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .answer-reveal.show { display: block; }
+  .answer-reveal strong { color: var(--success); font-family: var(--mono); }
+
+  /* NAV BUTTONS */
+  .nav-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    padding: 12px 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: bold;
+  }
+
+  .btn-primary:hover { box-shadow: 0 0 20px rgba(0,229,255,0.4); }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+  }
+
+  .btn-secondary:hover { border-color: var(--text); color: var(--text); }
+
+  /* TERMINAL STYLE */
+  .terminal {
+    background: #050709;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--success);
+    padding: 0;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .terminal-header {
+    background: var(--panel);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .terminal-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .terminal-dot.r { background: var(--accent2); }
+  .terminal-dot.y { background: var(--warning); }
+  .terminal-dot.g { background: var(--success); }
+
+  .terminal-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 6px;
+    letter-spacing: 1px;
+  }
+
+  .terminal-body {
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    color: #a0b8c0;
+  }
+
+  .terminal-body .prompt { color: var(--success); }
+  .terminal-body .cmd { color: #fff; }
+  .terminal-body .output { color: var(--muted); }
+  .terminal-body .highlight { color: var(--accent); }
+  .terminal-body .alert { color: var(--accent2); }
+
+  /* SECTION 6 FINDINGS */
+  .finding-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    padding: 18px 22px;
+    margin-bottom: 16px;
+  }
+
+  .finding-card h4 {
+    font-family: var(--header-font);
+    color: var(--accent2);
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .severity-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    margin-bottom: 10px;
+  }
+
+  .sev-critical { background: rgba(255,77,109,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+  .sev-high { background: rgba(255,179,0,0.12); color: var(--warning); border: 1px solid var(--warning); }
+  .sev-medium { background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid var(--accent); }
+
+  /* Completion screen */
+  .completion {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .completion h2 {
+    font-family: var(--header-font);
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--success);
+    text-shadow: 0 0 30px rgba(57,255,20,0.4);
+    margin-bottom: 16px;
+  }
+
+  .completion p {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 500px;
+    margin: 0 auto 32px;
+  }
+
+  .score-display {
+    font-family: var(--mono);
+    font-size: 64px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,229,255,0.5);
+    margin: 20px 0;
+  }
+
+  ul.styled { padding-left: 0; list-style: none; }
+  ul.styled li { padding: 4px 0 4px 20px; position: relative; }
+  ul.styled li::before { content: '▸'; position: absolute; left: 0; color: var(--accent); }
+
+  p + p { margin-top: 10px; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 700px) {
+    .two-col { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 24px 20px; }
+  }
+
+  /* ── GLOSSARY TOOLTIPS ── */
+  .term {
+    color: #ffb300;
+    border-bottom: 1px dashed #ffb300;
+    cursor: help;
+    font-style: normal;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  .term:hover { color: #ffd54f; border-bottom-color: #ffd54f; }
+
+  #gl-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    background: #0d1520;
+    border: 1px solid #ffb300;
+    border-left: 3px solid #ffb300;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.75), 0 0 18px rgba(255,179,0,0.1);
+    padding: 14px 18px;
+    width: 320px;
+    pointer-events: none;
+    font-family: var(--body-font);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  #gl-tooltip.vis { display: block; }
+  #gl-tooltip .tt-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ffb300;
+    margin-bottom: 6px;
+  }
+  #gl-tooltip .tt-def { color: var(--text); }
+  #gl-tooltip .tt-ex {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+  }
+  #gl-tooltip .tt-ex.has-ex { display: block; }
+
+  /* Glossary panel button */
+  #gl-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid #ffb300;
+    color: #ffb300;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 9px 16px;
+    cursor: pointer;
+    z-index: 200;
+    transition: background 0.2s;
+  }
+  #gl-btn:hover { background: rgba(255,179,0,0.1); }
+
+  /* Glossary slide-out panel */
+  #gl-panel {
+    position: fixed;
+    right: -400px;
+    top: 0;
+    bottom: 0;
+    width: 380px;
+    background: var(--surface);
+    border-left: 1px solid #ffb300;
+    z-index: 300;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  #gl-panel.open { right: 0; }
+  .gl-panel-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gl-panel-hdr h2 {
+    font-family: var(--header-font);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #ffb300;
+  }
+  .gl-close {
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .gl-entry {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gl-entry:last-child { border-bottom: none; }
+  .gl-entry-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #ffb300;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .gl-entry-def { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .gl-entry-ex { margin-top: 6px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP -->
+<div id="gl-tooltip" class="" style="left: 381px; top: 605px;">
+  <span class="tt-label" id="tt-label">FileZilla</span>
+  <span class="tt-def" id="tt-def">A free, open-source FTP/SFTP/FTPS client. In this lab, use File &gt; Site Manager &gt; New Site to create a connection. Set encryption to 'FTP - Insecure' to force unencrypted FTP so Wireshark can capture credentials in cleartext.</span>
+  <span class="tt-ex has-ex" id="tt-ex">File → Site Manager → New Site → set encryption to FTP Insecure</span>
+</div>
+
+<!-- GLOSSARY PANEL -->
+<div id="gl-panel">
+  <div class="gl-panel-hdr">
+    <h2>Glossary</h2>
+    <button class="gl-close" onclick="toggleGlossary()">CLOSE ✕</button>
+  </div>
+  <div id="gl-list">
+    <div class="gl-entry">
+      <div class="gl-entry-label">Access Control</div>
+      <div class="gl-entry-def">Security mechanisms that restrict who can access what resources and what they can do. Combines authentication (proving identity), authorization (what you can do), and accounting (logging what was done). Broken access controls are one of OWASP's Top 10.</div>
+      <div class="gl-entry-ex">FTP access control: read vs write permissions per user per directory</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Access Review</div>
+      <div class="gl-entry-def">A periodic process of verifying that all accounts have appropriate access rights given current role and business need. Best practice: quarterly reviews and reviews triggered by role changes or terminations. Prevents access accumulation over time.</div>
+      <div class="gl-entry-ex">Question to ask: Does Maintenance_Jill have a documented business need for Finance FTP access?</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Active Mode FTP</div>
+      <div class="gl-entry-def">FTP connection mode where the CLIENT announces which port the server should connect back to for data transfer. The SERVER initiates the data connection. Largely obsolete because stateful firewalls and NAT block the server's inbound connection attempt.</div>
+      <div class="gl-entry-ex">Client → PORT (ip,port) → Server  ∴  Server → SYN → Client  (blocked by most firewalls)</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Anonymous FTP</div>
+      <div class="gl-entry-def">FTP server configuration allowing login with username 'anonymous' and no real password. Originally designed for public software distribution. Completely bypasses authentication — no identity, no accountability, no audit trail. Critical risk on any internal server.</div>
+      <div class="gl-entry-ex">Anonymous login = anyone on the network can access whatever files anonymous has access to</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Application Layer (OSI Layer 7)</div>
+      <div class="gl-entry-def">The top layer of the OSI network model where end-user protocols operate. FTP, HTTP, DNS, SMTP, and SSH are application-layer protocols. They define how applications communicate — but rely on lower layers (TCP, IP) for actual packet delivery.</div>
+      <div class="gl-entry-ex">OSI Layer 7 = Application (FTP, HTTP, SSH)  |  Layer 4 = Transport (TCP, UDP)  |  Layer 3 = Network (IP)</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Audit Trail</div>
+      <div class="gl-entry-def">A chronological log of system activities — who did what, when, from where. Required for incident response, compliance, and accountability. Anonymous FTP destroys audit trails: entries say 'anonymous' did something, but identity is completely unknown.</div>
+      <div class="gl-entry-ex">Log: 2026-03-10 09:14:22 Finance_Bob RETR /Finance/Q1_report.xlsx from 192.168.2.168</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Authentication</div>
+      <div class="gl-entry-def">Verifying the claimed identity of a user or system before granting access. Methods: something you know (password), something you have (token/smart card), something you are (biometric). Anonymous FTP bypasses authentication entirely — a critical security failure.</div>
+      <div class="gl-entry-ex">FTP auth: USER Finance_Bob → PASS bob  (cleartext auth over the control channel)</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Blast Radius</div>
+      <div class="gl-entry-def">The scope of damage possible if a security control fails or an account is compromised. Minimizing blast radius is a core goal of least privilege — an overpermissioned admin account has a much larger blast radius than a read-only analyst account.</div>
+      <div class="gl-entry-ex">Compromised admin: full server control  |  Compromised read-only analyst: read access only</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Cleartext / Plaintext</div>
+      <div class="gl-entry-def">Data transmitted or stored without encryption — fully readable by anyone who intercepts it. FTP sends everything in cleartext: commands, usernames, passwords, and file contents are all visible in any packet capture. The opposite of encrypted data.</div>
+      <div class="gl-entry-ex">PASS bob  — Wireshark shows this in plain English. No decryption needed.</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Control Channel (FTP)</div>
+      <div class="gl-entry-def">The persistent TCP connection on port 21 used for all FTP commands and server responses. Commands like USER, PASS, CWD, LIST, and RETR all flow through here. Credentials transmitted on this channel are fully visible in cleartext.</div>
+      <div class="gl-entry-ex">Port 21 stays open the entire session  |  USER Finance_Bob  →  PASS bob  visible here</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Credential Stuffing</div>
+      <div class="gl-entry-def">Automated attack where stolen credentials from one breach are tested against other services. Accounts with simple, reused passwords are immediately compromised. Using 'admin' as a password on multiple systems makes one breach cascade into many.</div>
+      <div class="gl-entry-ex">Data breach leaks Finance_Admin:admin → attacker tries this on every service the company runs</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Credential Theft</div>
+      <div class="gl-entry-def">Stealing authentication credentials (usernames and passwords). FTP's cleartext transmission means credential theft requires only a packet capture — no decryption needed. Any attacker with network access can harvest FTP credentials in real time.</div>
+      <div class="gl-entry-ex">Wireshark on a shared network segment captures PASS bob — credential stolen with zero effort</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Credentials</div>
+      <div class="gl-entry-def">Authentication information used to prove identity to a system. Typically a username and password, but also includes tokens, certificates, and API keys. Stolen credentials are the most common initial access method in security incidents.</div>
+      <div class="gl-entry-ex">Finance_Bob : bob  — a credential pair. 'bob' as a password makes this trivially stealable.</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">CVSS — Common Vulnerability Scoring System</div>
+      <div class="gl-entry-def">A standardized 0–10 scale for rating vulnerability severity. Critical: 9.0–10.0 | High: 7.0–8.9 | Medium: 4.0–6.9 | Low: 0.1–3.9. Used in security reports to communicate risk objectively to stakeholders.</div>
+      <div class="gl-entry-ex">FTP cleartext on internet-facing finance server: CVSS ~9.8 Critical</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Data Channel (FTP)</div>
+      <div class="gl-entry-def">A separate TCP connection used for actual file data and directory listings. Created fresh for each transfer, then closed. In Active mode uses port 20 (server-initiated). In Passive mode uses a negotiated ephemeral port (client-initiated).</div>
+      <div class="gl-entry-ex">A new data channel opens for each LIST or RETR command, then closes</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Data Exfiltration</div>
+      <div class="gl-entry-def">Unauthorized transfer of data out of a system — typically by an attacker or malicious insider. FTP's plaintext transmission and lack of encryption makes exfiltrated data completely readable. Write access enables uploading data to a staging area.</div>
+      <div class="gl-entry-ex">RETR *.xlsx on an FTP server — downloads every Excel file the attacker can access</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Default / Trivial Credentials</div>
+      <div class="gl-entry-def">Username/password combinations that are either pre-configured defaults (admin/admin, root/root) or trivially obvious (username = password). Attackers always try these first. The Finance_Admin account using 'admin' is a textbook example.</div>
+      <div class="gl-entry-ex">admin/admin, root/root, admin/password — every attacker tries these automatically</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Dictionary Attack</div>
+      <div class="gl-entry-def">Password attack using a pre-built list of common passwords, words, and patterns. Passwords like 'bob', 'admin', 'password' appear in every dictionary file and are cracked in milliseconds. Longer, complex, random passwords are not susceptible.</div>
+      <div class="gl-entry-ex">Tools like Hydra or Hashcat test 10,000+ common passwords per second</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Encryption</div>
+      <div class="gl-entry-def">Converting readable data into an unreadable form using a cryptographic key and algorithm. Only parties with the correct key can decrypt it. FTP has no encryption. SFTP and FTPS encrypt all data including credentials.</div>
+      <div class="gl-entry-ex">FTP: credentials travel as plain text  |  SFTP: credentials encrypted with SSH keys</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Ephemeral Port</div>
+      <div class="gl-entry-def">A temporary, randomly-assigned high-numbered port (typically 1024–65535) used for a single connection. In Passive FTP, the server assigns an ephemeral port for each data channel. The port is freed when the connection closes.</div>
+      <div class="gl-entry-ex">PASV response assigns port 51322 for this one data transfer — then it's released</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">File/Directory Permissions</div>
+      <div class="gl-entry-def">Rules defining what actions a user can perform on a resource. Common FTP permissions: read (download files), write (upload/modify files), list (see directory contents), delete. Permissions should be scoped to the minimum required by the user's job function.</div>
+      <div class="gl-entry-ex">Analyst role: read-only /Finance/Reports  |  khoi (incorrectly): read+write entire server</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">FileZilla</div>
+      <div class="gl-entry-def">A free, open-source FTP/SFTP/FTPS client. In this lab, use File &gt; Site Manager &gt; New Site to create a connection. Set encryption to 'FTP - Insecure' to force unencrypted FTP so Wireshark can capture credentials in cleartext.</div>
+      <div class="gl-entry-ex">File → Site Manager → New Site → set encryption to FTP Insecure</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Firewall</div>
+      <div class="gl-entry-def">A security device or software that monitors and controls network traffic based on defined rules. Can be host-based (on the computer) or network-based (at the perimeter). Blocks unauthorized connections while allowing legitimate traffic.</div>
+      <div class="gl-entry-ex">Rule: allow tcp dst-port 22  deny tcp dst-port 21  (blocks FTP, allows SFTP)</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">FTP — File Transfer Protocol</div>
+      <div class="gl-entry-def">A network protocol (RFC 959) for transferring files between a client and server over TCP/IP. FTP transmits all data — including usernames and passwords — in cleartext with zero encryption, making it inherently insecure for sensitive data.</div>
+      <div class="gl-entry-ex">Uses port 21 for commands, port 20 (active) or ephemeral port (passive) for data</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">FTP Commands</div>
+      <div class="gl-entry-def">Text commands exchanged over the control channel. KEY COMMANDS: USER (send username), PASS (send password), CWD (change directory), LIST (list files), RETR (download file), STOR (upload file), PASV (request passive mode), PORT (active mode port), QUIT (close session).</div>
+      <div class="gl-entry-ex">USER Finance_Bob → PASS bob → CWD /Finance → LIST → RETR report.xlsx</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">FTPS — FTP Secure</div>
+      <div class="gl-entry-def">FTP with TLS/SSL encryption added. Comes in two forms: Explicit FTPS (STARTTLS on port 21) and Implicit FTPS (port 990). Maintains FTP's command structure but wraps it in encryption. Often confused with SFTP, which is an entirely different protocol.</div>
+      <div class="gl-entry-ex">FTPS = FTP + TLS wrapper  |  SFTP = SSH-based replacement for FTP</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Inbound Connection</div>
+      <div class="gl-entry-def">A TCP connection initiated from an external system toward your host or network. Stateful firewalls block inbound connections that were not first initiated from the inside. Active FTP fails because it requires the server to open an inbound connection to the client.</div>
+      <div class="gl-entry-ex">Active FTP data channel = inbound to client from server = blocked by stateful firewall</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Insider Threat</div>
+      <div class="gl-entry-def">A security risk originating from within the organization — current or former employees, contractors, or business partners misusing their authorized access. Overpermissioned accounts amplify insider threat risk by giving individuals access beyond their legitimate need.</div>
+      <div class="gl-entry-ex">Disgruntled employee with write access to FTP server could delete or exfiltrate all financial data</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">MFA — Multi-Factor Authentication</div>
+      <div class="gl-entry-def">Authentication requiring two or more factors: something you know (password), something you have (phone/hardware token), or something you are (biometric). Significantly reduces risk of compromised passwords — even a stolen password is useless without the second factor.</div>
+      <div class="gl-entry-ex">Even if attacker knows 'admin', they cannot log in without the MFA code from the admin's phone</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">NAT — Network Address Translation</div>
+      <div class="gl-entry-def">Technique where a router maps many private IP addresses to one public IP. Devices behind NAT cannot receive unsolicited inbound TCP connections. This breaks Active FTP — the server cannot initiate the data connection back to the client.</div>
+      <div class="gl-entry-ex">192.168.x.x (private) → single public IP via router  |  server cannot reach back through NAT</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Overpermissioned Account</div>
+      <div class="gl-entry-def">An account granted more access rights than required by its role and business need. Violates the principle of least privilege. A compromised overpermissioned account gives an attacker far more capability than if access had been properly scoped.</div>
+      <div class="gl-entry-ex">khoi (low-level analyst) with write access to entire Finance server = overpermissioned</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Packet Capture (PCAP)</div>
+      <div class="gl-entry-def">Recording network packets as they travel across a network interface. Any unencrypted protocol — FTP, Telnet, HTTP — exposes all data in a packet capture, including usernames, passwords, and file contents.</div>
+      <div class="gl-entry-ex">Wireshark saves captures as .pcap files  |  FTP credentials visible in plaintext in every capture</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Passive Mode FTP</div>
+      <div class="gl-entry-def">FTP connection mode where the SERVER advertises an ephemeral port for the CLIENT to connect to for data transfer. The client initiates both the control and data connections. Default in modern FTP clients because it works through NAT and firewalls.</div>
+      <div class="gl-entry-ex">Client → PASV → Server  ∴  Server → 227 (ip,port) → Client  ∴  Client → SYN → Server:port</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Password Policy</div>
+      <div class="gl-entry-def">Organizational rules governing password requirements: minimum length (12+ chars), complexity (uppercase, numbers, symbols), expiration, reuse restrictions, lockout after failed attempts. A missing or weak policy directly causes findings like those in this lab.</div>
+      <div class="gl-entry-ex">Good policy: 12+ chars, complexity, 90-day rotation, no username in password, 5-attempt lockout</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">PCI-DSS</div>
+      <div class="gl-entry-def">Payment Card Industry Data Security Standard — compliance requirements for organizations handling credit card data. Requirement 4 mandates encryption of cardholder data in transit. Using plaintext FTP to transfer payment data is a direct PCI-DSS violation.</div>
+      <div class="gl-entry-ex">PCI-DSS Req 4.2.1: 'Strong cryptography shall be used during transmission of cardholder data'</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Port</div>
+      <div class="gl-entry-def">A logical endpoint numbered 0–65535 that allows a single IP address to run multiple services at once. Well-known ports below 1024 are standardized by IANA. Port 21 = FTP, Port 22 = SSH/SFTP, Port 80 = HTTP, Port 443 = HTTPS.</div>
+      <div class="gl-entry-ex">tcp.port == 21  filters only FTP control traffic in Wireshark</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Principle of Least Privilege (PoLP)</div>
+      <div class="gl-entry-def">A security principle: every account, process, or system should have only the minimum access rights needed for its function — nothing more. Limits the blast radius of any breach or insider threat. Overpermissioned accounts violate this principle.</div>
+      <div class="gl-entry-ex">Analyst needs read-only access to /Finance/Reports  —  NOT write access to the entire server</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Protocol</div>
+      <div class="gl-entry-def">A standardized set of rules for how data is formatted, transmitted, and received between systems. Protocols are usually specified in RFCs. FTP, TCP, IP, HTTP, SSH are all protocols at different layers of the network stack.</div>
+      <div class="gl-entry-ex">FTP is an application-layer protocol that sits on top of TCP/IP</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">RFC — Request for Comments</div>
+      <div class="gl-entry-def">Documents published by the IETF that define internet standards and protocols. Despite the modest name, RFCs are the authoritative technical specifications. RFC 959 defines FTP. RFC 793 defines TCP. RFC 5321 defines SMTP.</div>
+      <div class="gl-entry-ex">RFC 959 (1985) = FTP specification  |  RFC 793 (1981) = TCP specification</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">SFTP — SSH File Transfer Protocol</div>
+      <div class="gl-entry-def">A completely separate, secure file transfer protocol that runs over SSH on port 22. All data including credentials is encrypted end-to-end. NOT an extension of FTP — entirely different protocol. The recommended replacement for FTP in most scenarios.</div>
+      <div class="gl-entry-ex">SFTP: all traffic encrypted  |  FTP: all traffic cleartext  →  always choose SFTP</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Stateful Firewall</div>
+      <div class="gl-entry-def">A firewall that tracks the state of active connections and only allows traffic that is part of an established session. Blocks unsolicited inbound connections — precisely what Active FTP requires. Most modern firewalls are stateful.</div>
+      <div class="gl-entry-ex">Client establishes outbound connection: allowed  |  Server initiates inbound (Active FTP): blocked</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">TCP — Transmission Control Protocol</div>
+      <div class="gl-entry-def">A transport-layer protocol providing reliable, ordered, error-checked delivery between applications. TCP establishes connections via the 3-way handshake before any data transfer. All FTP connections (control and data channels) use TCP.</div>
+      <div class="gl-entry-ex">Every TCP connection: SYN → SYN-ACK → ACK  (3-way handshake)  then data flows</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">TCP 3-Way Handshake</div>
+      <div class="gl-entry-def">The TCP connection establishment process: (1) SYN — client requests connection, (2) SYN-ACK — server acknowledges and responds, (3) ACK — client confirms. Visible in Wireshark as the first three packets of any TCP session.</div>
+      <div class="gl-entry-ex">In Wireshark: look for SYN / SYN-ACK / ACK flags before the 220 FTP banner appears</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">TCP/IP Protocol Suite</div>
+      <div class="gl-entry-def">The foundational networking protocols of the internet. TCP (Transmission Control Protocol) provides reliable, ordered, error-checked delivery. IP (Internet Protocol) handles addressing and routing. FTP runs over TCP/IP.</div>
+      <div class="gl-entry-ex">FTP uses TCP to guarantee file data arrives completely and in order</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Weak Password</div>
+      <div class="gl-entry-def">A password that is short, common, or easily guessable — trivially cracked by brute force, dictionary attack, or credential stuffing. 'bob', 'admin', 'password', '123456' can be cracked in milliseconds by any automated tool.</div>
+      <div class="gl-entry-ex">Finance_Bob password 'bob' — cracked in &lt;1ms by any password attack tool</div>
+    </div>
+    <div class="gl-entry">
+      <div class="gl-entry-label">Wireshark</div>
+      <div class="gl-entry-def">The industry-standard free packet analyzer. Captures live network traffic and decodes hundreds of protocols. Lets you filter traffic by port, IP, or protocol. Essential for network troubleshooting and security analysis.</div>
+      <div class="gl-entry-ex">Filter: tcp.port == 21  shows only FTP control channel commands and responses</div>
+    </div></div>
+</div>
+
+<button id="gl-btn" onclick="toggleGlossary()">📖 GLOSSARY (46)</button>
+
+<div class="header">
+  <div class="header-badge">LAB</div>
+  <h1>FTP <span>Security</span> Lab</h1>
+  <div class="progress-bar-wrap">
+    <span class="progress-label">PROGRESS</span>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <span class="progress-label" id="progressText">0 / 6</span>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-section-label">Module</div>
+    <div class="nav-item active" onclick="goTo(0)" id="nav-0">
+      <span class="nav-dot"></span> Introduction
+    </div>
+    <div class="nav-item" onclick="goTo(1)" id="nav-1">
+      <span class="nav-dot"></span> FTP Fundamentals
+    </div>
+    <div class="nav-item" onclick="goTo(2)" id="nav-2">
+      <span class="nav-dot"></span> Active vs Passive
+    </div>
+    <div class="nav-item" onclick="goTo(3)" id="nav-3">
+      <span class="nav-dot"></span> User Access Lab
+    </div>
+    <div class="nav-item" onclick="goTo(4)" id="nav-4">
+      <span class="nav-dot"></span> Network Traffic
+    </div>
+    <div class="nav-item" onclick="goTo(5)" id="nav-5">
+      <span class="nav-dot"></span> Least Privilege
+    </div>
+    <div class="nav-item" onclick="goTo(6)" id="nav-6">
+      <span class="nav-dot"></span> Recommendations
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <!-- SECTION 0: INTRO -->
+    <div class="section active" id="section-0">
+      <div class="section-header">
+        <div class="section-tag">// MARCH 10, 2026 — 1.5 HR LAB</div>
+        <div class="section-title">FTP Security Lab</div>
+        <div class="section-subtitle">Introduction to <em class="term" data-term="FTP">FTP</em> from a cybersecurity perspective</div>
+      </div>
+
+      <div class="info-block">
+        <h3>Objectives</h3>
+        <ul class="styled">
+          <li>Recognize <em class="term" data-term="FTP">FTP</em> <em class="term" data-term="port">ports</em> and the differences between <em class="term" data-term="active-mode">Active</em> and <em class="term" data-term="passive-mode">Passive</em> modes</li>
+          <li>Gain hands-on familiarity with <em class="term" data-term="FTP">FTP</em> clients (<em class="term" data-term="filezilla">FileZilla</em>)</li>
+          <li>Recognize and analyze <em class="term" data-term="FTP">FTP</em> traffic in <em class="term" data-term="wireshark">Wireshark</em> <em class="term" data-term="packet-capture">packet captures</em></li>
+          <li>Identify flaws in server configuration using <em class="term" data-term="least-privilege">least privilege</em> and <em class="term" data-term="access-control">access control</em> principles</li>
+          <li>Produce actionable security recommendations for a customer</li>
+        </ul>
+      </div>
+
+      <div class="two-col">
+        <div class="info-block">
+          <h3>Tools Used</h3>
+          <ul class="styled">
+            <li><em class="term" data-term="filezilla">FileZilla</em> FTP Client</li>
+            <li><em class="term" data-term="wireshark">Wireshark</em></li>
+            <li>FTP Lab Server</li>
+          </ul>
+        </div>
+        <div class="info-block">
+          <h3>Lab Network</h3>
+          <ul class="styled">
+            <li>Client: 192.168.2.168</li>
+            <li>Server: 192.168.2.188</li>
+            <li><em class="term" data-term="control-channel">Control</em> <em class="term" data-term="port">port</em>: 21</li>
+            <li><em class="term" data-term="data-channel">Data</em> <em class="term" data-term="port">port</em>: varies</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="info-block warning">
+        <h3>Discussion Prompt</h3>
+        <p>Before we dive in — how many of you have used <em class="term" data-term="FTP">FTP</em> before? Where have you seen it used in the wild? Think about web hosting, file transfers, legacy enterprise systems.</p>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-primary" onclick="next(0)">BEGIN MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 1: FTP FUNDAMENTALS -->
+    <div class="section" id="section-1">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 01</div>
+        <div class="section-title">FTP Fundamentals</div>
+        <div class="section-subtitle">What is FTP, what ports does it use, and why does it matter?</div>
+      </div>
+
+      <div class="info-block">
+        <h3>What is FTP?</h3>
+        <p>FTP — <em class="term" data-term="FTP">File Transfer Protocol</em> — is one of the oldest <em class="term" data-term="application-layer">application-layer</em> protocols still in widespread use. Defined in <em class="term" data-term="RFC">RFC 959</em>, it was designed specifically for transferring files between hosts on a <em class="term" data-term="TCP-IP">TCP/IP</em> network. FTP is a <em class="term" data-term="cleartext">cleartext</em> protocol: all data, including <em class="term" data-term="credentials">credentials</em>, travels unencrypted. This is its most significant security problem.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="info-block">
+          <h3>Port 21 — Control</h3>
+          <p>Port 21 is the <em class="term" data-term="control-channel">command channel</em>. All FTP commands (<em class="term" data-term="ftp-commands">USER, PASS, LIST, RETR, STOR</em>) and server responses flow on this connection. The control connection persists for the entire FTP session.</p>
+        </div>
+        <div class="info-block">
+          <h3>Port 20 — Data (Active)</h3>
+          <p>Port 20 is the <em class="term" data-term="data-channel">data channel</em> used in Active mode. Data transfers (directory listings, file downloads/uploads) use a separate <em class="term" data-term="TCP">TCP</em> connection established through this port — but only in active mode.</p>
+        </div>
+      </div>
+
+      <div class="info-block warning">
+        <h3>Security Implication</h3>
+        <p>Because FTP sends credentials and data in plaintext over port 21, an attacker with network access can trivially capture usernames, passwords, and file contents. Wireshark will show you exactly this in the lab. <em class="term" data-term="SFTP">SFTP</em> (port 22) and <em class="term" data-term="FTPS">FTPS</em> (port 990) exist as encrypted alternatives — this lab intentionally uses unencrypted FTP to demonstrate the risk.</p>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 01</span>
+          What does FTP stand for?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q1&#39;)">
+            <span class="opt-letter">A.</span> Fast Transfer Protocol
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q1&#39;)">
+            <span class="opt-letter">B.</span> File Transfer Protocol
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q1&#39;)">
+            <span class="opt-letter">C.</span> File Transmission Protocol
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q1&#39;)">
+            <span class="opt-letter">D.</span> Forwarded Transfer Protocol
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q1-feedback">
+          File Transfer Protocol — defined in <em class="term" data-term="RFC">RFC</em> 959. Designed specifically for transferring files over <em class="term" data-term="TCP-IP">TCP/IP</em> networks. Predates the modern internet and remains in use due to legacy system inertia and specific use cases.
+        </div>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 02</span>
+          Which ports does FTP use?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q2&#39;)">
+            <span class="opt-letter">A.</span> Port 22 (control) and Port 23 (data)
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q2&#39;)">
+            <span class="opt-letter">B.</span> Port 80 (control) and Port 443 (data)
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q2&#39;)">
+            <span class="opt-letter">C.</span> Port 21 (control) and Port 20 (data, active mode)
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q2&#39;)">
+            <span class="opt-letter">D.</span> Port 21 only — all traffic on one port
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q2-feedback">
+          Port 21 is the control/command channel. Port 20 is the data channel — but only in Active mode. In <em class="term" data-term="passive-mode">Passive mode</em>, the <em class="term" data-term="data-channel">data channel</em> uses a negotiated <em class="term" data-term="ephemeral-port">ephemeral port</em> above 1023 rather than port 20.
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(1)">← BACK</button>
+        <button class="btn btn-primary" onclick="next(1)">NEXT MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 2: ACTIVE VS PASSIVE -->
+    <div class="section" id="section-2">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 02</div>
+        <div class="section-title">Active vs Passive FTP</div>
+        <div class="section-subtitle">How the data connection is established — and why it matters for firewalls</div>
+      </div>
+
+      <div class="diagram">
+        <div class="diagram-title">// ACTIVE FTP — Server initiates data connection back to client</div>
+        <div class="flow-row">
+          <div class="flow-box">CLIENT :N (random port)</div>
+          <span class="flow-arrow">──PORT cmd──►</span>
+          <div class="flow-box server">SERVER :21</div>
+        </div>
+        <div class="flow-row">
+          <span style="color:var(--muted); font-size:12px; padding-left:20px;">Client tells server: "I'm listening on port N, connect to me for data"</span>
+        </div>
+        <div class="flow-row" style="margin-top:12px;">
+          <div class="flow-box">CLIENT :N</div>
+          <span class="flow-arrow">◄──SYN (data)──</span>
+          <div class="flow-box server">SERVER :20</div>
+        </div>
+        <div class="flow-row">
+          <span style="color:var(--muted); font-size:12px; padding-left:20px;">Server initiates TCP connection FROM port 20 TO client port N</span>
+        </div>
+      </div>
+
+      <div class="info-block danger">
+        <h3>Active Mode Problem</h3>
+        <p>The server initiates the data connection back to the client. This is problematic when the client is behind a <em class="term" data-term="NAT">NAT</em> router or <em class="term" data-term="stateful-firewall">stateful firewall</em> — the firewall blocks unsolicited inbound connections. <em class="term" data-term="active-mode">Active mode</em> is largely obsolete in modern networks for exactly this reason.</p>
+        <p style="margin-top:8px;">In the lab: <code style="color:var(--accent)">PORT (200x256)+122</code> — this is the client telling the server which port to connect to (octets 5 and 6 encode the port number).</p>
+      </div>
+
+      <div class="diagram">
+        <div class="diagram-title">// PASSIVE FTP — Client initiates BOTH connections</div>
+        <div class="flow-row">
+          <div class="flow-box">CLIENT</div>
+          <span class="flow-arrow">──PASV cmd──►</span>
+          <div class="flow-box server">SERVER :21</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-box">CLIENT</div>
+          <span class="flow-arrow">◄──PORT N reply──</span>
+          <div class="flow-box server">SERVER</div>
+        </div>
+        <div class="flow-row">
+          <span style="color:var(--muted); font-size:12px; padding-left:20px;">Server says: "Connect to me on port N for data transfer"</span>
+        </div>
+        <div class="flow-row" style="margin-top:8px;">
+          <div class="flow-box">CLIENT</div>
+          <span class="flow-arrow">──SYN (data)──►</span>
+          <div class="flow-box server">SERVER :N</div>
+        </div>
+        <div class="flow-row">
+          <span style="color:var(--muted); font-size:12px; padding-left:20px;">Client initiates data connection to server's advertised port</span>
+        </div>
+      </div>
+
+      <div class="info-block success">
+        <h3>Passive Mode — Current Standard</h3>
+        <p><em class="term" data-term="passive-mode">Passive mode</em> is the default in modern FTP clients because the client initiates both the control and data connections. This plays nicely with NAT and client-side firewalls. The server must have a range of ports open for data connections — in this lab, that includes port 51322.</p>
+        <p style="margin-top:8px;"><strong>Wireshark filter for this lab:</strong></p>
+        <code style="color:var(--accent); font-family:var(--mono); font-size:12px; display:block; margin-top:6px;">tcp.port == 21 or tcp.port == 51322</code>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 03</span>
+          In passive FTP, which party advertises the port number the data connection will use?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q3&#39;)">
+            <span class="opt-letter">A.</span> The client, via the PORT command
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q3&#39;)">
+            <span class="opt-letter">B.</span> The server, in response to the PASV command
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q3&#39;)">
+            <span class="opt-letter">C.</span> Always port 20, regardless of mode
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q3&#39;)">
+            <span class="opt-letter">D.</span> It is negotiated via a three-way handshake before the control connection
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q3-feedback">
+          In passive mode, the client sends PASV to the server. The server responds with the IP and port number it is listening on for the data connection. The client then initiates the data connection to that server-advertised port. This keeps all connection initiations on the client side.
+        </div>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 04</span>
+          Why is Active FTP generally not used today?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q4&#39;)">
+            <span class="opt-letter">A.</span> It is slower than Passive mode
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q4&#39;)">
+            <span class="opt-letter">B.</span> Active mode is only available on legacy servers
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q4&#39;)">
+            <span class="opt-letter">C.</span> The server initiates the data connection back to the client, which is blocked by NAT and stateful firewalls
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q4&#39;)">
+            <span class="opt-letter">D.</span> Active mode requires port 22, which conflicts with SSH
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q4-feedback">
+          Active FTP requires the server to make an inbound TCP connection to the client on a client-specified port. Stateful firewalls and NAT devices block unsolicited inbound connections, so the data channel is dropped. Passive mode solves this by making the client initiate both connections.
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(2)">← BACK</button>
+        <button class="btn btn-primary" onclick="next(2)">NEXT MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 3: USER ACCESS LAB -->
+    <div class="section" id="section-3">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 03</div>
+        <div class="section-title">User Access Lab</div>
+        <div class="section-subtitle">Connect with each account — observe what each user can see and do</div>
+      </div>
+
+      <div class="info-block">
+        <h3>Lab Setup — FileZilla</h3>
+        <p>File &gt; Site Manager &gt; New Site. Set <em class="term" data-term="encryption">encryption</em> to <strong>FTP — Insecure</strong> (not <em class="term" data-term="SFTP">SFTP</em> or <em class="term" data-term="FTPS">FTPS</em>). Enter the server IP and credentials below. Connect with each account one at a time.</p>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Password</th>
+            <th>Role</th>
+            <th>Flag</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code style="color:var(--accent); font-family:var(--mono)">anonymous</code></td>
+            <td><em style="color:var(--muted)">none required</em></td>
+            <td>No authenticated role</td>
+            <td><span class="tag-warn">REVIEW</span></td>
+          </tr>
+          <tr>
+            <td><code style="color:var(--accent); font-family:var(--mono)">Finance_Bob</code></td>
+            <td><code style="color:var(--accent2); font-family:var(--mono)">bob</code></td>
+            <td>Analyst 1 — Finance</td>
+            <td><span class="tag-warn">WEAK PWD</span></td>
+          </tr>
+          <tr>
+            <td><code style="color:var(--accent); font-family:var(--mono)">Finance_Admin</code></td>
+            <td><code style="color:var(--accent2); font-family:var(--mono)">admin</code></td>
+            <td>Finance Admin / IT Personnel</td>
+            <td><span class="tag-critical">CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td><code style="color:var(--accent); font-family:var(--mono)">Maintenance_Jill</code></td>
+            <td><code style="color:var(--warning); font-family:var(--mono)">Fall2025</code></td>
+            <td>No Finance association</td>
+            <td><span class="tag-warn">REVIEW</span></td>
+          </tr>
+          <tr>
+            <td><code style="color:var(--accent); font-family:var(--mono)">khoi</code></td>
+            <td><em style="color:var(--muted)">(provided in lab)</em></td>
+            <td>Finance user — low level</td>
+            <td><span class="tag-critical">OVERPERMISSIONED</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="input-quiz">
+        <div class="quiz-question">
+          <span class="q-num">// WORKSHEET Q1</span>
+          For each account, note which files and directories they had access to. What were the differences between the accounts?
+        </div>
+        <textarea rows="5" placeholder="Write your observations here — compare access levels across accounts..."></textarea>
+        <button class="reveal-btn" onclick="revealAnswer(&#39;ans-access&#39;)">REVEAL INSTRUCTOR ANSWER</button>
+        <div class="answer-reveal" id="ans-access">
+          <strong>Key differences:</strong><br><br>
+          <strong>anonymous:</strong> Should have restricted or no access. If anonymous login is enabled with any file access, this is a misconfiguration — no <em class="term" data-term="authentication">authentication</em> means anyone can connect.<br><br>
+          <strong>Finance_Bob:</strong> Analyst-level access. Should see Finance-related files but with read-only scope limited to their function.<br><br>
+          <strong>Finance_Admin:</strong> Broader Finance directory access including admin-level files, consistent with IT/admin role.<br><br>
+          <strong>Maintenance_Jill:</strong> Has no finance association — if she can access Finance directories, that's a least privilege violation. Her scope should be limited to maintenance-relevant files only.<br><br>
+          <strong>khoi:</strong> Low-level finance user who has been granted excessive read AND write permissions across directories that exceed what their role requires. This is the primary finding — they can read and write files beyond their job function.
+        </div>
+      </div>
+
+      <div class="input-quiz">
+        <div class="quiz-question">
+          <span class="q-num">// WORKSHEET Q2</span>
+          What files did the khoi account have access to? Why is this a problem?
+        </div>
+        <textarea rows="4" placeholder="Describe khoi&#39;s access and the security concern..."></textarea>
+        <button class="reveal-btn" onclick="revealAnswer(&#39;ans-khoi&#39;)">REVEAL INSTRUCTOR ANSWER</button>
+        <div class="answer-reveal" id="ans-khoi">
+          <strong>khoi</strong> is a low-level finance user but has been granted an <em class="term" data-term="overpermissioned">overly permissive</em> set of abilities including read <em>and</em> write access to directories beyond what their job function requires.<br><br>
+          The concern: excessive write access means khoi could exfiltrate data, modify financial records, or plant files on the server. Even if khoi is a trusted employee today, the principle of least privilege exists precisely because <em class="term" data-term="insider-threat">insider threats</em> and <em class="term" data-term="credential-theft">compromised credentials</em> are real attack vectors. If khoi's account is compromised, the blast radius is far larger than necessary.
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(3)">← BACK</button>
+        <button class="btn btn-primary" onclick="next(3)">NEXT MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 4: NETWORK TRAFFIC -->
+    <div class="section" id="section-4">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 04</div>
+        <div class="section-title">Network Traffic Analysis</div>
+        <div class="section-subtitle">Reading FTP sessions in Wireshark — what the wire reveals</div>
+      </div>
+
+      <div class="info-block">
+        <h3>Wireshark Filters for This Lab</h3>
+        <div class="code-block">
+          <span class="comment">// Capture FTP control + passive data port</span><br>
+          <span class="keyword">tcp.port == 21 or tcp.port == 51322</span><br><br>
+          <span class="comment">// Filter by source (client machine)</span><br>
+          <span class="keyword">ip.src == 192.168.2.168</span><br><br>
+          <span class="comment">// Filter by destination (FTP server)</span><br>
+          <span class="keyword">ip.dst == 192.168.2.188</span>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-header">
+          <div class="terminal-dot r"></div>
+          <div class="terminal-dot y"></div>
+          <div class="terminal-dot g"></div>
+          <span class="terminal-label">wireshark — ftp session capture</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt">// TCP 3-way handshake to port 21</span></div>
+          <div><span class="output">SYN     192.168.2.168:52401 → 192.168.2.188:21</span></div>
+          <div><span class="output">SYN-ACK 192.168.2.188:21   → 192.168.2.168:52401</span></div>
+          <div><span class="output">ACK     192.168.2.168:52401 → 192.168.2.188:21</span></div>
+          <div>&nbsp;</div>
+          <div><span class="prompt">// FTP login — plaintext on the wire</span></div>
+          <div><span class="highlight">220 FTP Server Ready</span></div>
+          <div><span class="cmd">USER Finance_Bob</span></div>
+          <div><span class="highlight">331 Password required</span></div>
+          <div class="alert"><span class="cmd">PASS bob</span>  <span class="comment">← password visible in cleartext</span></div>
+          <div><span class="highlight">230 User logged in</span></div>
+          <div>&nbsp;</div>
+          <div><span class="prompt">// Directory navigation</span></div>
+          <div><span class="cmd">CWD /Finance</span></div>
+          <div><span class="cmd">LIST</span></div>
+          <div><span class="cmd">RETR quarterly_report.xlsx</span></div>
+          <div>&nbsp;</div>
+          <div><span class="prompt">// PASV mode — server advertises data port</span></div>
+          <div><span class="cmd">PASV</span></div>
+          <div><span class="highlight">227 Entering Passive Mode (192,168,2,188,200,202)</span></div>
+          <div><span class="output">// port = (200*256)+202 = 51402</span></div>
+        </div>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 05</span>
+          Did you observe a TCP 3-way handshake? How do you identify it in Wireshark?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q5&#39;)">
+            <span class="opt-letter">A.</span> No — FTP uses UDP so there is no 3-way handshake
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q5&#39;)">
+            <span class="opt-letter">B.</span> Yes — you see SYN, SYN-ACK, ACK packets to port 21 before any FTP commands
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q5&#39;)">
+            <span class="opt-letter">C.</span> Only in Active mode — Passive mode skips the handshake
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q5&#39;)">
+            <span class="opt-letter">D.</span> The handshake happens but is not visible to Wireshark
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q5-feedback">
+          FTP runs over <em class="term" data-term="TCP">TCP</em>. Every TCP connection opens with the <em class="term" data-term="three-way-handshake">3-way handshake</em> (SYN → SYN-ACK → ACK). In Wireshark you'll see this for BOTH the <em class="term" data-term="control-channel">control connection</em> (port 21) and the data connection (port 51322 or whatever port PASV negotiated).
+        </div>
+      </div>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 06</span>
+          Can you identify a username and password from a Wireshark FTP capture? Why or why not?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q6&#39;)">
+            <span class="opt-letter">A.</span> No — FTP uses hashed authentication
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q6&#39;)">
+            <span class="opt-letter">B.</span> Only the username is visible, not the password
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q6&#39;)">
+            <span class="opt-letter">C.</span> Yes — both USER and PASS commands transmit credentials in plaintext
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q6&#39;)">
+            <span class="opt-letter">D.</span> Only if the attacker intercepts within the same subnet
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q6-feedback">
+          FTP transmits <em class="term" data-term="credentials">credentials</em> in <em class="term" data-term="cleartext">cleartext</em>. The USER command sends the username, and the PASS command sends the password — both visible in any Wireshark capture. This is a fundamental, unfixable flaw in FTP. Any attacker with network access (same subnet, compromised router, tap) can harvest credentials from FTP traffic.
+        </div>
+      </div>
+
+      <div class="input-quiz">
+        <div class="quiz-question">
+          <span class="q-num">// WORKSHEET Q3</span>
+          In passive mode, how does the client determine which port to use for the data connection?
+        </div>
+        <textarea rows="3" placeholder="Explain what happens after the PASV command..."></textarea>
+        <button class="reveal-btn" onclick="revealAnswer(&#39;ans-pasv&#39;)">REVEAL INSTRUCTOR ANSWER</button>
+        <div class="answer-reveal" id="ans-pasv">
+          <strong>PASV Response Port Calculation:</strong><br><br>
+          After the client sends the <em class="term" data-term="ftp-commands">PASV</em> command, the server responds with six comma-separated numbers: the IP address (4 octets) and the port (2 octets). The port is calculated as:<br><br>
+          <code style="color:var(--accent); font-family:var(--mono);">port = (octet5 * 256) + octet6</code><br><br>
+          Example: <code style="color:var(--accent)">227 Entering Passive Mode (192,168,2,188,200,202)</code><br>
+          Port = (200 × 256) + 202 = 51402<br><br>
+          The client then initiates a new TCP connection to the server's IP on that negotiated port for the data transfer.
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(4)">← BACK</button>
+        <button class="btn btn-primary" onclick="next(4)">NEXT MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 5: LEAST PRIVILEGE -->
+    <div class="section" id="section-5">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 05</div>
+        <div class="section-title">Least Privilege &amp; Access Controls</div>
+        <div class="section-subtitle">Evaluating whether users have appropriate access given their role</div>
+      </div>
+
+      <div class="info-block">
+        <h3>Principle of Least Privilege</h3>
+        <p>Every account should have the minimum permissions required to perform its function — no more. Access beyond business need is a vulnerability: it expands blast radius if an account is compromised, increases insider threat risk, and creates compliance exposure.</p>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Role</th>
+            <th>Problem?</th>
+            <th>Concern</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code style="font-family:var(--mono)">anonymous</code></td>
+            <td>None</td>
+            <td><span class="tag-critical">CRITICAL</span></td>
+            <td>Unauthenticated access. No business justification for anonymous FTP on a Finance server.</td>
+          </tr>
+          <tr>
+            <td><code style="font-family:var(--mono)">Finance_Bob</code></td>
+            <td>Analyst 1</td>
+            <td><span class="tag-warn">REVIEW</span></td>
+            <td>Password is literally "bob" — trivially guessable. Password policy failure.</td>
+          </tr>
+          <tr>
+            <td><code style="font-family:var(--mono)">Finance_Admin</code></td>
+            <td>IT Admin</td>
+            <td><span class="tag-critical">CRITICAL</span></td>
+            <td>Password is "admin" — default/trivial credential. Admin account with no password security.</td>
+          </tr>
+          <tr>
+            <td><code style="font-family:var(--mono)">Maintenance_Jill</code></td>
+            <td>Maintenance — no Finance</td>
+            <td><span class="tag-critical">CRITICAL</span></td>
+            <td>No association with Finance. Should not have FTP access to a Finance server at all.</td>
+          </tr>
+          <tr>
+            <td><code style="font-family:var(--mono)">khoi</code></td>
+            <td>Finance (low-level)</td>
+            <td><span class="tag-critical">CRITICAL</span></td>
+            <td>Read AND write access that exceeds job function. Overpermissioned relative to role.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="quiz-block">
+        <div class="quiz-question">
+          <span class="q-num">// QUESTION 07</span>
+          Which account represents the most concerning access control violation based on role mismatch?
+        </div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answer(this, false, &#39;q7&#39;)">
+            <span class="opt-letter">A.</span> Finance_Bob — weak password
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q7&#39;)">
+            <span class="opt-letter">B.</span> Finance_Admin — admin password is "admin"
+          </div>
+          <div class="quiz-option" onclick="answer(this, true, &#39;q7&#39;)">
+            <span class="opt-letter">C.</span> Maintenance_Jill — no business justification for access to a Finance FTP server
+          </div>
+          <div class="quiz-option" onclick="answer(this, false, &#39;q7&#39;)">
+            <span class="opt-letter">D.</span> khoi — has write access
+          </div>
+        </div>
+        <div class="quiz-feedback" id="q7-feedback">
+          Maintenance_Jill has no Finance association whatsoever — there is zero business justification for a maintenance employee to have any access to a Finance FTP server. This is a complete access control failure. khoi is also a significant finding (excessive permissions), and Finance_Admin's password is critically weak, but Jill represents the clearest role mismatch.
+        </div>
+      </div>
+
+      <div class="input-quiz">
+        <div class="quiz-question">
+          <span class="q-num">// WORKSHEET Q4</span>
+          Were there any accounts where you felt like you had too much access? What access did those accounts have, and what is the business risk?
+        </div>
+        <textarea rows="5" placeholder="Identify the overpermissioned accounts and describe the specific risk..."></textarea>
+        <button class="reveal-btn" onclick="revealAnswer(&#39;ans-overperms&#39;)">REVEAL INSTRUCTOR ANSWER</button>
+        <div class="answer-reveal" id="ans-overperms">
+          <strong>Overpermissioned accounts:</strong><br><br>
+          <strong>khoi</strong>: Finance user with read/write access beyond their role. Risk: can exfiltrate or tamper with financial data. If account is compromised via credential theft, attacker inherits write access to Finance server.<br><br>
+          <strong>Finance_Admin</strong>: Admin account with trivial password ("admin"). Risk: <em class="term" data-term="credential-stuffing">credential stuffing</em> or brute force would immediately succeed. Admin-level access = full scope of damage on the server.<br><br>
+          <strong>anonymous</strong>: Any access whatsoever is too much. No authenticated identity means no accountability and no audit trail. Disabling anonymous FTP is a baseline requirement for any production system.
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(5)">← BACK</button>
+        <button class="btn btn-primary" onclick="next(5)">NEXT MODULE →</button>
+      </div>
+    </div>
+
+    <!-- SECTION 6: RECOMMENDATIONS -->
+    <div class="section" id="section-6">
+      <div class="section-header">
+        <div class="section-tag">// MODULE 06</div>
+        <div class="section-title">Recommendations</div>
+        <div class="section-subtitle">What would you tell this customer? How severe is it?</div>
+      </div>
+
+      <div class="finding-card">
+        <h4>Finding 1 — FTP Cleartext Transmission</h4>
+        <span class="severity-badge sev-critical">CRITICAL</span>
+        <p>All credentials and file contents transmitted over FTP are visible in <em class="term" data-term="cleartext">plaintext</em> on the network. Any attacker with network access can trivially capture usernames, passwords, and data.</p>
+        <p style="margin-top:10px;"><strong style="color:var(--success)">Recommendation:</strong> Migrate to <em class="term" data-term="SFTP">SFTP</em> (SSH File Transfer Protocol, port 22) or <em class="term" data-term="FTPS">FTPS</em> (FTP over TLS). Disable plain FTP on the server. There is no mitigation that makes plaintext FTP acceptable for financial data.</p>
+      </div>
+
+      <div class="finding-card">
+        <h4>Finding 2 — Anonymous FTP Enabled</h4>
+        <span class="severity-badge sev-critical">CRITICAL</span>
+        <p><em class="term" data-term="anonymous-ftp">Anonymous login</em> is enabled, allowing unauthenticated access to the FTP server. This bypasses all <em class="term" data-term="access-control">authentication controls</em> and removes accountability from access events.</p>
+        <p style="margin-top:10px;"><strong style="color:var(--success)">Recommendation:</strong> Disable anonymous FTP immediately. There is no legitimate use case for anonymous access to a Finance file server.</p>
+      </div>
+
+      <div class="finding-card">
+        <h4>Finding 3 — Trivial / Default Credentials</h4>
+        <span class="severity-badge sev-critical">CRITICAL</span>
+        <p>Finance_Bob uses password "bob". Finance_Admin uses password "admin". These are <em class="term" data-term="dictionary-attack">dictionary attack</em> first-guess credentials. The admin account with a trivial password is the highest impact item in this category.</p>
+        <p style="margin-top:10px;"><strong style="color:var(--success)">Recommendation:</strong> Enforce a password policy: minimum 12 characters, complexity requirements, no username-as-password. Rotate all current credentials. Consider <em class="term" data-term="MFA">MFA</em> for administrative accounts.</p>
+      </div>
+
+      <div class="finding-card">
+        <h4>Finding 4 — Role Misalignment (Maintenance_Jill)</h4>
+        <span class="severity-badge sev-high">HIGH</span>
+        <p>Maintenance_Jill has FTP access to a Finance server with no documented business justification. This violates <em class="term" data-term="least-privilege">least privilege</em> and creates unnecessary exposure.</p>
+        <p style="margin-top:10px;"><strong style="color:var(--success)">Recommendation:</strong> Remove Maintenance_Jill's access. Conduct a full access review: every account on the FTP server should have a documented business owner and access justification.</p>
+      </div>
+
+      <div class="finding-card">
+        <h4>Finding 5 — Excessive Permissions (khoi)</h4>
+        <span class="severity-badge sev-high">HIGH</span>
+        <p>khoi is a low-level Finance user with read and write access that exceeds their job function. Overpermissioning increases <em class="term" data-term="blast-radius">blast radius</em> if the account is compromised.</p>
+        <p style="margin-top:10px;"><strong style="color:var(--success)">Recommendation:</strong> Scope khoi's access to read-only on specific directories required for their role. Apply the same review to all analyst-level accounts.</p>
+      </div>
+
+      <div class="input-quiz">
+        <div class="quiz-question">
+          <span class="q-num">// WORKSHEET Q5 — DISCUSSION</span>
+          What severity rating would you assign to the FTP cleartext credential issue? How would you present these findings to a non-technical customer?
+        </div>
+        <textarea rows="5" placeholder="Write your severity rating and explain how you&#39;d communicate this to a customer..."></textarea>
+        <button class="reveal-btn" onclick="revealAnswer(&#39;ans-severity&#39;)">REVEAL INSTRUCTOR ANSWER</button>
+        <div class="answer-reveal" id="ans-severity">
+          <strong>Severity: Critical</strong><br><br>
+          FTP transmitting credentials and financial data in <em class="term" data-term="cleartext">cleartext</em> on a Finance server is a Critical finding by any standard framework (<em class="term" data-term="cvss">CVSS</em>, OWASP, NIST). Data confidentiality is completely broken for any attacker with network access — which includes any malicious insider or anyone who has compromised a network device.<br><br>
+          <strong>How to present to a non-technical customer:</strong><br>
+          "Imagine every file you send to this server, and every password you use to log in, is written on a postcard. Anyone on the network between your computer and the server can read that postcard. Right now, your employees are sending financial files using the postcard method. We need to switch to a sealed envelope — that's what SFTP does."<br><br>
+          Pair the analogy with the business impact: regulatory exposure, potential breach notification requirements (<em class="term" data-term="pci-dss">PCI-DSS</em> if payment data is involved, SOX for public company financial data), and reputational risk.
+        </div>
+      </div>
+
+      <div class="info-block success">
+        <h3>Lab Complete</h3>
+        <p>You've covered FTP fundamentals, active vs passive modes, hands-on user access testing, network traffic analysis in Wireshark, and produced security findings with recommendations. These skills apply directly to security assessments, helpdesk troubleshooting, and network defense work.</p>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn btn-secondary" onclick="prev(6)">← BACK</button>
+        <button class="btn btn-primary" onclick="complete()">COMPLETE LAB ✓</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// GLOSSARY DATA
+// ═══════════════════════════════════════════════════════
+const GL = {
+  "FTP": { label:"FTP — File Transfer Protocol", def:"A network protocol (RFC 959) for transferring files between a client and server over TCP/IP. FTP transmits all data — including usernames and passwords — in cleartext with zero encryption, making it inherently insecure for sensitive data.", ex:"Uses port 21 for commands, port 20 (active) or ephemeral port (passive) for data" },
+  "port": { label:"Port", def:"A logical endpoint numbered 0–65535 that allows a single IP address to run multiple services at once. Well-known ports below 1024 are standardized by IANA. Port 21 = FTP, Port 22 = SSH/SFTP, Port 80 = HTTP, Port 443 = HTTPS.", ex:"tcp.port == 21  filters only FTP control traffic in Wireshark" },
+  "active-mode": { label:"Active Mode FTP", def:"FTP connection mode where the CLIENT announces which port the server should connect back to for data transfer. The SERVER initiates the data connection. Largely obsolete because stateful firewalls and NAT block the server's inbound connection attempt.", ex:"Client → PORT (ip,port) → Server  ∴  Server → SYN → Client  (blocked by most firewalls)" },
+  "passive-mode": { label:"Passive Mode FTP", def:"FTP connection mode where the SERVER advertises an ephemeral port for the CLIENT to connect to for data transfer. The client initiates both the control and data connections. Default in modern FTP clients because it works through NAT and firewalls.", ex:"Client → PASV → Server  ∴  Server → 227 (ip,port) → Client  ∴  Client → SYN → Server:port" },
+  "filezilla": { label:"FileZilla", def:"A free, open-source FTP/SFTP/FTPS client. In this lab, use File > Site Manager > New Site to create a connection. Set encryption to 'FTP - Insecure' to force unencrypted FTP so Wireshark can capture credentials in cleartext.", ex:"File → Site Manager → New Site → set encryption to FTP Insecure" },
+  "wireshark": { label:"Wireshark", def:"The industry-standard free packet analyzer. Captures live network traffic and decodes hundreds of protocols. Lets you filter traffic by port, IP, or protocol. Essential for network troubleshooting and security analysis.", ex:"Filter: tcp.port == 21  shows only FTP control channel commands and responses" },
+  "packet-capture": { label:"Packet Capture (PCAP)", def:"Recording network packets as they travel across a network interface. Any unencrypted protocol — FTP, Telnet, HTTP — exposes all data in a packet capture, including usernames, passwords, and file contents.", ex:"Wireshark saves captures as .pcap files  |  FTP credentials visible in plaintext in every capture" },
+  "least-privilege": { label:"Principle of Least Privilege (PoLP)", def:"A security principle: every account, process, or system should have only the minimum access rights needed for its function — nothing more. Limits the blast radius of any breach or insider threat. Overpermissioned accounts violate this principle.", ex:"Analyst needs read-only access to /Finance/Reports  —  NOT write access to the entire server" },
+  "access-control": { label:"Access Control", def:"Security mechanisms that restrict who can access what resources and what they can do. Combines authentication (proving identity), authorization (what you can do), and accounting (logging what was done). Broken access controls are one of OWASP's Top 10.", ex:"FTP access control: read vs write permissions per user per directory" },
+  "cleartext": { label:"Cleartext / Plaintext", def:"Data transmitted or stored without encryption — fully readable by anyone who intercepts it. FTP sends everything in cleartext: commands, usernames, passwords, and file contents are all visible in any packet capture. The opposite of encrypted data.", ex:"PASS bob  — Wireshark shows this in plain English. No decryption needed." },
+  "credentials": { label:"Credentials", def:"Authentication information used to prove identity to a system. Typically a username and password, but also includes tokens, certificates, and API keys. Stolen credentials are the most common initial access method in security incidents.", ex:"Finance_Bob : bob  — a credential pair. 'bob' as a password makes this trivially stealable." },
+  "protocol": { label:"Protocol", def:"A standardized set of rules for how data is formatted, transmitted, and received between systems. Protocols are usually specified in RFCs. FTP, TCP, IP, HTTP, SSH are all protocols at different layers of the network stack.", ex:"FTP is an application-layer protocol that sits on top of TCP/IP" },
+  "RFC": { label:"RFC — Request for Comments", def:"Documents published by the IETF that define internet standards and protocols. Despite the modest name, RFCs are the authoritative technical specifications. RFC 959 defines FTP. RFC 793 defines TCP. RFC 5321 defines SMTP.", ex:"RFC 959 (1985) = FTP specification  |  RFC 793 (1981) = TCP specification" },
+  "TCP-IP": { label:"TCP/IP Protocol Suite", def:"The foundational networking protocols of the internet. TCP (Transmission Control Protocol) provides reliable, ordered, error-checked delivery. IP (Internet Protocol) handles addressing and routing. FTP runs over TCP/IP.", ex:"FTP uses TCP to guarantee file data arrives completely and in order" },
+  "TCP": { label:"TCP — Transmission Control Protocol", def:"A transport-layer protocol providing reliable, ordered, error-checked delivery between applications. TCP establishes connections via the 3-way handshake before any data transfer. All FTP connections (control and data channels) use TCP.", ex:"Every TCP connection: SYN → SYN-ACK → ACK  (3-way handshake)  then data flows" },
+  "three-way-handshake": { label:"TCP 3-Way Handshake", def:"The TCP connection establishment process: (1) SYN — client requests connection, (2) SYN-ACK — server acknowledges and responds, (3) ACK — client confirms. Visible in Wireshark as the first three packets of any TCP session.", ex:"In Wireshark: look for SYN / SYN-ACK / ACK flags before the 220 FTP banner appears" },
+  "control-channel": { label:"Control Channel (FTP)", def:"The persistent TCP connection on port 21 used for all FTP commands and server responses. Commands like USER, PASS, CWD, LIST, and RETR all flow through here. Credentials transmitted on this channel are fully visible in cleartext.", ex:"Port 21 stays open the entire session  |  USER Finance_Bob  →  PASS bob  visible here" },
+  "data-channel": { label:"Data Channel (FTP)", def:"A separate TCP connection used for actual file data and directory listings. Created fresh for each transfer, then closed. In Active mode uses port 20 (server-initiated). In Passive mode uses a negotiated ephemeral port (client-initiated).", ex:"A new data channel opens for each LIST or RETR command, then closes" },
+  "ftp-commands": { label:"FTP Commands", def:"Text commands exchanged over the control channel. KEY COMMANDS: USER (send username), PASS (send password), CWD (change directory), LIST (list files), RETR (download file), STOR (upload file), PASV (request passive mode), PORT (active mode port), QUIT (close session).", ex:"USER Finance_Bob → PASS bob → CWD /Finance → LIST → RETR report.xlsx" },
+  "SFTP": { label:"SFTP — SSH File Transfer Protocol", def:"A completely separate, secure file transfer protocol that runs over SSH on port 22. All data including credentials is encrypted end-to-end. NOT an extension of FTP — entirely different protocol. The recommended replacement for FTP in most scenarios.", ex:"SFTP: all traffic encrypted  |  FTP: all traffic cleartext  →  always choose SFTP" },
+  "FTPS": { label:"FTPS — FTP Secure", def:"FTP with TLS/SSL encryption added. Comes in two forms: Explicit FTPS (STARTTLS on port 21) and Implicit FTPS (port 990). Maintains FTP's command structure but wraps it in encryption. Often confused with SFTP, which is an entirely different protocol.", ex:"FTPS = FTP + TLS wrapper  |  SFTP = SSH-based replacement for FTP" },
+  "NAT": { label:"NAT — Network Address Translation", def:"Technique where a router maps many private IP addresses to one public IP. Devices behind NAT cannot receive unsolicited inbound TCP connections. This breaks Active FTP — the server cannot initiate the data connection back to the client.", ex:"192.168.x.x (private) → single public IP via router  |  server cannot reach back through NAT" },
+  "firewall": { label:"Firewall", def:"A security device or software that monitors and controls network traffic based on defined rules. Can be host-based (on the computer) or network-based (at the perimeter). Blocks unauthorized connections while allowing legitimate traffic.", ex:"Rule: allow tcp dst-port 22  deny tcp dst-port 21  (blocks FTP, allows SFTP)" },
+  "stateful-firewall": { label:"Stateful Firewall", def:"A firewall that tracks the state of active connections and only allows traffic that is part of an established session. Blocks unsolicited inbound connections — precisely what Active FTP requires. Most modern firewalls are stateful.", ex:"Client establishes outbound connection: allowed  |  Server initiates inbound (Active FTP): blocked" },
+  "inbound-connection": { label:"Inbound Connection", def:"A TCP connection initiated from an external system toward your host or network. Stateful firewalls block inbound connections that were not first initiated from the inside. Active FTP fails because it requires the server to open an inbound connection to the client.", ex:"Active FTP data channel = inbound to client from server = blocked by stateful firewall" },
+  "ephemeral-port": { label:"Ephemeral Port", def:"A temporary, randomly-assigned high-numbered port (typically 1024–65535) used for a single connection. In Passive FTP, the server assigns an ephemeral port for each data channel. The port is freed when the connection closes.", ex:"PASV response assigns port 51322 for this one data transfer — then it's released" },
+  "encryption": { label:"Encryption", def:"Converting readable data into an unreadable form using a cryptographic key and algorithm. Only parties with the correct key can decrypt it. FTP has no encryption. SFTP and FTPS encrypt all data including credentials.", ex:"FTP: credentials travel as plain text  |  SFTP: credentials encrypted with SSH keys" },
+  "anonymous-ftp": { label:"Anonymous FTP", def:"FTP server configuration allowing login with username 'anonymous' and no real password. Originally designed for public software distribution. Completely bypasses authentication — no identity, no accountability, no audit trail. Critical risk on any internal server.", ex:"Anonymous login = anyone on the network can access whatever files anonymous has access to" },
+  "authentication": { label:"Authentication", def:"Verifying the claimed identity of a user or system before granting access. Methods: something you know (password), something you have (token/smart card), something you are (biometric). Anonymous FTP bypasses authentication entirely — a critical security failure.", ex:"FTP auth: USER Finance_Bob → PASS bob  (cleartext auth over the control channel)" },
+  "permissions": { label:"File/Directory Permissions", def:"Rules defining what actions a user can perform on a resource. Common FTP permissions: read (download files), write (upload/modify files), list (see directory contents), delete. Permissions should be scoped to the minimum required by the user's job function.", ex:"Analyst role: read-only /Finance/Reports  |  khoi (incorrectly): read+write entire server" },
+  "weak-password": { label:"Weak Password", def:"A password that is short, common, or easily guessable — trivially cracked by brute force, dictionary attack, or credential stuffing. 'bob', 'admin', 'password', '123456' can be cracked in milliseconds by any automated tool.", ex:"Finance_Bob password 'bob' — cracked in <1ms by any password attack tool" },
+  "default-credentials": { label:"Default / Trivial Credentials", def:"Username/password combinations that are either pre-configured defaults (admin/admin, root/root) or trivially obvious (username = password). Attackers always try these first. The Finance_Admin account using 'admin' is a textbook example.", ex:"admin/admin, root/root, admin/password — every attacker tries these automatically" },
+  "password-policy": { label:"Password Policy", def:"Organizational rules governing password requirements: minimum length (12+ chars), complexity (uppercase, numbers, symbols), expiration, reuse restrictions, lockout after failed attempts. A missing or weak policy directly causes findings like those in this lab.", ex:"Good policy: 12+ chars, complexity, 90-day rotation, no username in password, 5-attempt lockout" },
+  "overpermissioned": { label:"Overpermissioned Account", def:"An account granted more access rights than required by its role and business need. Violates the principle of least privilege. A compromised overpermissioned account gives an attacker far more capability than if access had been properly scoped.", ex:"khoi (low-level analyst) with write access to entire Finance server = overpermissioned" },
+  "blast-radius": { label:"Blast Radius", def:"The scope of damage possible if a security control fails or an account is compromised. Minimizing blast radius is a core goal of least privilege — an overpermissioned admin account has a much larger blast radius than a read-only analyst account.", ex:"Compromised admin: full server control  |  Compromised read-only analyst: read access only" },
+  "insider-threat": { label:"Insider Threat", def:"A security risk originating from within the organization — current or former employees, contractors, or business partners misusing their authorized access. Overpermissioned accounts amplify insider threat risk by giving individuals access beyond their legitimate need.", ex:"Disgruntled employee with write access to FTP server could delete or exfiltrate all financial data" },
+  "data-exfiltration": { label:"Data Exfiltration", def:"Unauthorized transfer of data out of a system — typically by an attacker or malicious insider. FTP's plaintext transmission and lack of encryption makes exfiltrated data completely readable. Write access enables uploading data to a staging area.", ex:"RETR *.xlsx on an FTP server — downloads every Excel file the attacker can access" },
+  "credential-theft": { label:"Credential Theft", def:"Stealing authentication credentials (usernames and passwords). FTP's cleartext transmission means credential theft requires only a packet capture — no decryption needed. Any attacker with network access can harvest FTP credentials in real time.", ex:"Wireshark on a shared network segment captures PASS bob — credential stolen with zero effort" },
+  "credential-stuffing": { label:"Credential Stuffing", def:"Automated attack where stolen credentials from one breach are tested against other services. Accounts with simple, reused passwords are immediately compromised. Using 'admin' as a password on multiple systems makes one breach cascade into many.", ex:"Data breach leaks Finance_Admin:admin → attacker tries this on every service the company runs" },
+  "dictionary-attack": { label:"Dictionary Attack", def:"Password attack using a pre-built list of common passwords, words, and patterns. Passwords like 'bob', 'admin', 'password' appear in every dictionary file and are cracked in milliseconds. Longer, complex, random passwords are not susceptible.", ex:"Tools like Hydra or Hashcat test 10,000+ common passwords per second" },
+  "audit-trail": { label:"Audit Trail", def:"A chronological log of system activities — who did what, when, from where. Required for incident response, compliance, and accountability. Anonymous FTP destroys audit trails: entries say 'anonymous' did something, but identity is completely unknown.", ex:"Log: 2026-03-10 09:14:22 Finance_Bob RETR /Finance/Q1_report.xlsx from 192.168.2.168" },
+  "access-review": { label:"Access Review", def:"A periodic process of verifying that all accounts have appropriate access rights given current role and business need. Best practice: quarterly reviews and reviews triggered by role changes or terminations. Prevents access accumulation over time.", ex:"Question to ask: Does Maintenance_Jill have a documented business need for Finance FTP access?" },
+  "application-layer": { label:"Application Layer (OSI Layer 7)", def:"The top layer of the OSI network model where end-user protocols operate. FTP, HTTP, DNS, SMTP, and SSH are application-layer protocols. They define how applications communicate — but rely on lower layers (TCP, IP) for actual packet delivery.", ex:"OSI Layer 7 = Application (FTP, HTTP, SSH)  |  Layer 4 = Transport (TCP, UDP)  |  Layer 3 = Network (IP)" },
+  "MFA": { label:"MFA — Multi-Factor Authentication", def:"Authentication requiring two or more factors: something you know (password), something you have (phone/hardware token), or something you are (biometric). Significantly reduces risk of compromised passwords — even a stolen password is useless without the second factor.", ex:"Even if attacker knows 'admin', they cannot log in without the MFA code from the admin's phone" },
+  "cvss": { label:"CVSS — Common Vulnerability Scoring System", def:"A standardized 0–10 scale for rating vulnerability severity. Critical: 9.0–10.0 | High: 7.0–8.9 | Medium: 4.0–6.9 | Low: 0.1–3.9. Used in security reports to communicate risk objectively to stakeholders.", ex:"FTP cleartext on internet-facing finance server: CVSS ~9.8 Critical" },
+  "pci-dss": { label:"PCI-DSS", def:"Payment Card Industry Data Security Standard — compliance requirements for organizations handling credit card data. Requirement 4 mandates encryption of cardholder data in transit. Using plaintext FTP to transfer payment data is a direct PCI-DSS violation.", ex:"PCI-DSS Req 4.2.1: 'Strong cryptography shall be used during transmission of cardholder data'" }
+};
+
+// ═══════════════════════════════════════════════════════
+// TOOLTIP ENGINE
+// ═══════════════════════════════════════════════════════
+const tooltip = document.getElementById('gl-tooltip');
+const ttLabel = document.getElementById('tt-label');
+const ttDef   = document.getElementById('tt-def');
+const ttEx    = document.getElementById('tt-ex');
+let hideTimer = null;
+
+function showTip(el, e) {
+  const entry = GL[el.dataset.term];
+  if (!entry) return;
+  clearTimeout(hideTimer);
+  ttLabel.textContent = entry.label;
+  ttDef.textContent   = entry.def;
+  if (entry.ex) { ttEx.textContent = entry.ex; ttEx.classList.add('has-ex'); }
+  else { ttEx.textContent = ''; ttEx.classList.remove('has-ex'); }
+  tooltip.classList.add('vis');
+  moveTip(e);
+}
+
+function moveTip(e) {
+  const W = 320, H = tooltip.offsetHeight || 130;
+  let x = e.clientX + 16, y = e.clientY + 16;
+  if (x + W > window.innerWidth  - 12) x = e.clientX - W - 16;
+  if (y + H > window.innerHeight - 12) y = e.clientY - H - 16;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+
+function hideTip() { hideTimer = setTimeout(() => tooltip.classList.remove('vis'), 120); }
+
+function bindTerms(root) {
+  (root || document).querySelectorAll('.term').forEach(el => {
+    if (el._gl) return;
+    el._gl = true;
+    el.addEventListener('mouseenter', e => showTip(el, e));
+    el.addEventListener('mousemove',  e => moveTip(e));
+    el.addEventListener('mouseleave', hideTip);
+  });
+}
+bindTerms();
+
+// ═══════════════════════════════════════════════════════
+// GLOSSARY PANEL
+// ═══════════════════════════════════════════════════════
+function buildPanel() {
+  const list = document.getElementById('gl-list');
+  const entries = Object.entries(GL).sort((a,b) => a[1].label.localeCompare(b[1].label));
+  list.innerHTML = entries.map(([,e]) => `
+    <div class="gl-entry">
+      <div class="gl-entry-label">${e.label}</div>
+      <div class="gl-entry-def">${e.def}</div>
+      ${e.ex ? `<div class="gl-entry-ex">${e.ex}</div>` : ''}
+    </div>`).join('');
+  document.getElementById('gl-btn').textContent = `📖 GLOSSARY (${entries.length})`;
+}
+buildPanel();
+
+function toggleGlossary() {
+  document.getElementById('gl-panel').classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// NAV + QUIZ
+// ═══════════════════════════════════════════════════════
+const TOTAL = 6;
+let currentSection = 0;
+let completedSections = new Set();
+let quizAnswered = {};
+
+function goTo(idx) {
+  document.getElementById('section-' + currentSection).classList.remove('active');
+  document.getElementById('nav-' + currentSection).classList.remove('active');
+  currentSection = idx;
+  document.getElementById('section-' + idx).classList.add('active');
+  document.getElementById('nav-' + idx).classList.add('active');
+  updateProgress();
+  window.scrollTo(0, 0);
+  setTimeout(bindTerms, 50);
+}
+
+function next(from) {
+  completedSections.add(from);
+  document.getElementById('nav-' + from).classList.add('completed');
+  document.getElementById('nav-' + from).classList.remove('active');
+  if (from < TOTAL) goTo(from + 1);
+  updateProgress();
+}
+
+function prev(from) { goTo(from - 1); }
+
+function updateProgress() {
+  const pct = (completedSections.size / TOTAL) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = completedSections.size + ' / ' + TOTAL;
+}
+
+function answer(el, correct, qId) {
+  if (quizAnswered[qId]) return;
+  quizAnswered[qId] = true;
+  const parent = el.parentElement;
+  parent.querySelectorAll('.quiz-option').forEach(o => o.classList.add('disabled'));
+  const feedback = document.getElementById(qId + '-feedback');
+  if (correct) {
+    el.classList.add('correct');
+    feedback.classList.remove('wrong');
+  } else {
+    el.classList.add('incorrect');
+    feedback.classList.add('wrong');
+    parent.querySelectorAll('.quiz-option').forEach(o => {
+      if (o.onclick && o.onclick.toString().includes('true')) o.classList.add('correct');
+    });
+  }
+  feedback.classList.add('show');
+  setTimeout(bindTerms, 50);
+}
+
+function revealAnswer(id) {
+  document.getElementById(id).classList.add('show');
+  setTimeout(bindTerms, 50);
+}
+
+function complete() {
+  completedSections.add(6);
+  document.getElementById('nav-6').classList.add('completed');
+  updateProgress();
+  document.getElementById('section-6').innerHTML = `
+    <div class="completion">
+      <div style="font-family:var(--mono); font-size:12px; letter-spacing:4px; color:var(--muted); margin-bottom:16px;">// LAB COMPLETE</div>
+      <h2>Mission Accomplished</h2>
+      <p>You've completed the FTP Security Lab. You can now identify FTP vulnerabilities, read FTP traffic in Wireshark, and make actionable security recommendations.</p>
+      <div class="score-display">6/6</div>
+      <div style="font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--muted); margin-bottom:32px;">MODULES COMPLETED</div>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="goTo(0)">REVIEW FROM START</button>
+        <button class="btn btn-primary" onclick="goTo(5)">REVIEW RECOMMENDATIONS</button>
+      </div>
+    </div>`;
+}
+</script>
+
+
+</body></html>
