@@ -1,287 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investigation: FTP Compromise — March 24, 2026</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #ffffff;
-            --text-main: #1a1a1a;
-            --text-muted: #666666;
-            --accent: #0055ff; /* Cobalt Blue */
-            --border: #e0e0e0;
-            --surface: #f9f9f9;
-            --code-bg: #f4f4f4;
-            --max-width: 1100px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTP Investigation: Case 03-24 — March 24, 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&family=Inconsolata&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #0f1319;
+    --panel: #141920;
+    --border: #1e2a38;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --text: #c8d8e8;
+    --muted: #5a7080;
+    --header-font: 'Rajdhani', sans-serif;
+    --mono: 'Share Tech Mono', monospace;
+  }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
-            padding: 0;
-        }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    overflow-x: hidden;
+  }
 
-        /* --- Layout --- */
-        header {
-            border-bottom: 1px solid var(--border);
-            padding: 4rem 2rem;
-            max-width: var(--max-width);
-            margin: 0 auto;
-        }
+  /* Scanline Effect */
+  body::before {
+    content: " ";
+    display: block;
+    position: fixed;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+  }
 
-        .container {
-            max-width: var(--max-width);
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 4rem;
-            padding: 4rem 2rem;
-        }
+  header {
+    padding: 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
 
-        @media (max-width: 850px) {
-            .container { grid-template-columns: 1fr; gap: 2rem; }
-            aside { position: static; }
-        }
+  .container { display: flex; min-height: 100vh; }
 
-        /* --- Typography --- */
-        h1 { font-weight: 800; font-size: 3.5rem; letter-spacing: -0.04em; line-height: 1; margin-bottom: 1rem; }
-        h2 { font-weight: 600; font-size: 1.5rem; letter-spacing: -0.02em; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-        .metadata { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; }
-        
-        /* --- Sidebar Navigation --- */
-        aside { position: sticky; top: 2rem; height: fit-content; }
-        .nav-list { list-style: none; }
-        .nav-item { margin-bottom: 1rem; }
-        .nav-link { 
-            text-decoration: none; 
-            color: var(--text-muted); 
-            font-size: 0.9rem; 
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-        .nav-link:hover { color: var(--accent); }
-        .nav-link.active { color: var(--text-main); border-left: 2px solid var(--accent); padding-left: 1rem; }
+  /* Sidebar */
+  nav {
+    width: 280px;
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    background: var(--surface);
+  }
 
-        /* --- Content Blocks --- */
-        section { margin-bottom: 6rem; scroll-margin-top: 2rem; }
-        p { margin-bottom: 1.5rem; font-size: 1.1rem; color: #333; }
-        
-        .artifact-box {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 2rem;
-            margin: 2rem 0;
-            position: relative;
-        }
+  .nav-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+  }
 
-        .artifact-label {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            position: absolute;
-            top: -10px;
-            left: 20px;
-            background: white;
-            padding: 0 5px;
-        }
+  .nav-item:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-item.active { background: var(--panel); border-color: var(--accent); color: var(--accent); }
 
-        .code-block {
-            font-family: 'IBM Plex Mono', monospace;
-            background: var(--code-bg);
-            padding: 1.5rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            overflow-x: auto;
-            margin: 1rem 0;
-        }
+  /* Main Content */
+  main { flex: 1; padding: 60px; max-width: 900px; }
 
-        /* --- Interactive Elements --- */
-        .question-card {
-            border-left: 4px solid var(--border);
-            padding-left: 1.5rem;
-            margin: 2.5rem 0;
-        }
+  .section { display: none; }
+  .section.active { display: block; animation: fadeIn 0.5s ease-out; }
 
-        .question-text { font-weight: 600; margin-bottom: 0.5rem; display: block; }
-        
-        .answer-reveal {
-            background: none;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 0.5rem 1rem;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 0.5rem;
-        }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .answer-reveal:hover { background: var(--accent); color: white; }
+  h1, h2 { font-family: var(--header-font); text-transform: uppercase; letter-spacing: 2px; }
+  h1 { color: var(--accent); font-size: 3rem; margin-bottom: 10px; }
+  h2 { font-size: 1.5rem; margin-bottom: 24px; display: flex; align-items: center; gap: 15px; }
+  h2::before { content: ">"; color: var(--accent); }
 
-        .answer-content {
-            display: none;
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #f0f4ff;
-            border-radius: 4px;
-        }
+  .terminal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 14px;
+    margin: 20px 0;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
 
-        .answer-content.show { display: block; }
+  .terminal::after {
+    content: "LOG_DATA_STREAMS";
+    position: absolute;
+    top: -10px; right: 20px;
+    background: var(--bg);
+    padding: 0 10px;
+    font-size: 10px;
+    color: var(--accent);
+  }
 
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 4rem 2rem;
-            text-align: center;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-    </style>
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 20px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 10px;
+  }
+
+  .btn:hover { background: var(--accent); color: var(--bg); box-shadow: 0 0 15px var(--accent); }
+
+  .finding-card {
+    display: none;
+    margin-top: 15px;
+    padding: 15px;
+    border-left: 2px solid var(--accent2);
+    background: rgba(255, 77, 109, 0.05);
+  }
+
+  .finding-card.show { display: block; }
+
+  /* Glossary Sidebar */
+  .glossary {
+    width: 300px;
+    padding: 20px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  .glossary h3 { font-family: var(--header-font); color: var(--accent); margin-bottom: 15px; }
+  .term { margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .term b { color: var(--accent); display: block; margin-bottom: 4px; }
+</style>
 </head>
 <body>
 
-    <header>
-        <div class="metadata">Lab Investigation // Case: 2026-03-24-FTP</div>
-        <h1>Investigating FTP Compromise</h1>
-        <p style="max-width: 600px; color: var(--text-muted);">A forensic analysis of unauthorized access, staged data, and exfiltration artifacts within a customer environment.</p>
-    </header>
+<header>
+  <div style="font-family: var(--mono); color: var(--accent); font-size: 12px; margin-bottom: 10px;">// SYSTEM_STATUS: INVESTIGATION_ACTIVE</div>
+  <h1>FTP COMPROMISE: MARCH 24</h1>
+</header>
 
-    <div class="container">
-        <aside>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="#objectives" class="nav-link">01. Objectives</a></li>
-                <li class="nav-item"><a href="#compromise" class="nav-link">02. Compromised Users</a></li>
-                <li class="nav-item"><a href="#staging" class="nav-link">03. Staging & Downloads</a></li>
-                <li class="nav-item"><a href="#telemetry" class="nav-link">04. Application Telemetry</a></li>
-                <li class="nav-item"><a href="#infrastructure" class="nav-link">05. Actor Infrastructure</a></li>
-                <li class="nav-item"><a href="#review" class="nav-link">06. Customer Review</a></li>
-            </ul>
-        </aside>
+<div class="container">
+  <nav>
+    <div class="nav-item active" onclick="showSection('intro')">01_OBJECTIVES</div>
+    <div class="nav-item" onclick="showSection('users')">02_COMPROMISED_USERS</div>
+    <div class="nav-item" onclick="showSection('staging')">03_STAGED_DATA</div>
+    <div class="nav-item" onclick="showSection('telemetry')">04_TELEMETRY</div>
+    <div class="nav-item" onclick="showSection('infrastructure')">05_THREAT_ACTOR</div>
+  </nav>
 
-        <main>
-            <section id="objectives">
-                <h2>Student Learning Objectives</h2>
-                <ul style="margin-left: 1.5rem;">
-                    <li>Identify anomalies within Wireshark capture using knowledge of common misconfigurations. [cite: 38]</li>
-                    <li>Identify potentially compromised FTP users and data exfiltration destinations. [cite: 39, 40]</li>
-                    <li>Review forensic endpoint artifacts including XML configuration files. [cite: 41]</li>
-                    <li>Develop pertinent questions for customer environment discovery. [cite: 42]</li>
-                </ul>
-            </section>
-
-            <section id="compromise">
-                <h2>Identifying Compromised Users</h2>
-                <div class="question-card">
-                    <span class="question-text">What FTP users appear to be compromised?</span>
-                    <button class="answer-reveal" onclick="toggleAnswer(this)">Reveal Findings</button>
-                    <div class="answer-content">
-                        Maintenance_Jill and Anonymous. [cite: 45, 46]
-                    </div>
-                </div>
-
-                <div class="artifact-box">
-                    <span class="artifact-label">Network Parameters</span>
-                    <div class="code-block">
-                        Source IP: 192.168.2.196 [cite: 48]<br>
-                        FTP Server: 192.168.2.122 [cite: 50]<br>
-                        Client IP: 192.168.2.196 [cite: 52]
-                    </div>
-                </div>
-            </section>
-
-            <section id="staging">
-                <h2>Staged and Stolen Data</h2>
-                <p>During the investigation, specific commands and network patterns were used to confirm unauthorized data movement.</p>
-                
-                <div class="question-card">
-                    <span class="question-text">How was the data download confirmed?</span>
-                    <button class="answer-reveal" onclick="toggleAnswer(this)">Reveal Technical Detail</button>
-                    <div class="answer-content">
-                        Through the <strong>RETR</strong> command and referencing <strong>PASV</strong> port numbers to identify the TCP 3-way handshake and FTP-Data transmission. [cite: 57, 58]
-                    </div>
-                </div>
-
-                <div class="artifact-box">
-                    <span class="artifact-label">Staging Directory</span>
-                    <p style="font-family: 'IBM Plex Mono'; font-size: 0.9rem;">C:\Users\test\Desktop\FTP\Lending [cite: 60]</p>
-                </div>
-            </section>
-
-            <section id="telemetry">
-                <h2>Application Specific Telemetry</h2>
-                <p>The following artifacts from the victim endpoint overlap with the network investigation:</p>
-                <ul style="margin-left: 1.5rem; margin-bottom: 2rem;">
-                    <li><strong>Site Manager IPs:</strong> Identifying known remote hosts. [cite: 68]</li>
-                    <li><strong>Filezilla.xml:</strong> Confirming local file paths. [cite: 69]</li>
-                    <li><strong>Recent Servers:</strong> Log of destinations used for exfiltration. [cite: 70]</li>
-                </ul>
-            </section>
-
-            <section id="infrastructure">
-                <h2>Threat Actor Infrastructure</h2>
-                <p>Authorization was granted for a restricted "Hack Back" to identify infrastructure specifics.</p>
-                
-                <div class="artifact-box">
-                    <span class="artifact-label">Exfiltration Artifacts</span>
-                    <p><strong>Base64 Hash:</strong> <code>V2hvTkxDaXNUaGlzIT8y</code> [cite: 76]</p>
-                    <p><strong>Resolved Username:</strong> <code>threatactor</code> [cite: 78]</p>
-                    <p><strong>Storage Path:</strong> <code>/home/threatactor</code> [cite: 80]</p>
-                </div>
-            </section>
-
-            <section id="review">
-                <h2>Client Environment Review</h2>
-                <div class="question-card">
-                    <span class="question-text">Is Maintenance_Jill authorized for this activity?</span>
-                    <p>No. Maintenance_Jill's authorized device is located at <strong>192.168.2.250</strong>, but logins were seen from <strong>192.168.2.196</strong>. [cite: 85]</p>
-                </div>
-                <div class="question-card">
-                    <span class="question-text">Who should have access to the FTP server?</span>
-                    <p>Internal policy states only <strong>Finance personnel</strong> should have access. [cite: 87]</p>
-                </div>
-            </section>
-        </main>
+  <main>
+    <div id="intro" class="section active">
+      <h2>Learning Objectives</h2>
+      <p>Analyze network traffic and endpoint artifacts to trace an unauthorized FTP exfiltration event.</p>
+      <ul style="margin: 20px 0; color: var(--muted); line-height: 2;">
+        <li>Detect anomalies in Wireshark captures.</li>
+        <li>Identify compromised credentials and source IPs.</li>
+        <li>Review forensic artifacts (XML/Logs).</li>
+        <li>Assess "Hack Back" infrastructure.</li>
+      </ul>
     </div>
 
-    <footer>
-        &copy; 2026 — Forensic Investigation Training // Prepared for March 24th Session
-    </footer>
+    <div id="users" class="section">
+      <h2>Compromised Entities</h2>
+      <p>Review the network logs to identify which accounts were utilized by the actor.</p>
+      <div class="terminal">
+        IP_SRC: 192.168.2.196<br>
+        SRV_IP: 192.168.2.122<br>
+        STATUS: UNAUTHORIZED_AUTH_SUCCESS
+      </div>
+      <button class="btn" onclick="toggleFinding('f1')">REVEAL COMPROMISED ACCOUNTS</button>
+      <div id="f1" class="finding-card">
+        <b>FINDINGS:</b> Maintenance_Jill and Anonymous accounts utilized from unauthorized IP 192.168.2.196.
+      </div>
+    </div>
 
-    <script>
-        function toggleAnswer(btn) {
-            const content = btn.nextElementSibling;
-            content.classList.toggle('show');
-            btn.textContent = content.classList.contains('show') ? 'Hide Findings' : 'Reveal Findings';
-        }
+    <div id="staging" class="section">
+      <h2>Data Staging & Exfiltration</h2>
+      <p>Locate where the data was gathered before moving off-network.</p>
+      <div class="terminal">
+        FTP_CMD: RETR<br>
+        MODE: PASV (Passive)<br>
+        HANDSHAKE: TCP_3_WAY_COMPLETE
+      </div>
+      <button class="btn" onclick="toggleFinding('f2')">VIEW STAGING PATH</button>
+      <div id="f2" class="finding-card">
+        <b>LOCAL_PATH:</b> C:\Users\test\Desktop\FTP\Lending
+      </div>
+    </div>
 
-        // Simple scroll spy for navigation
-        window.addEventListener('scroll', () => {
-            const sections = document.querySelectorAll('section');
-            const navLinks = document.querySelectorAll('.nav-link');
-            
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                if (pageYOffset >= sectionTop - 60) {
-                    current = section.getAttribute('id');
-                }
-            });
+    <div id="telemetry" class="section">
+      <h2>Application Telemetry</h2>
+      <p>Endpoint configuration files provide evidence of the actor's tools and destinations.</p>
+      <div class="terminal">
+        FOUND: Filezilla.xml<br>
+        FOUND: Site_Manager_IPs.log<br>
+        FOUND: Recent_Servers.xml
+      </div>
+      <button class="btn" onclick="toggleFinding('f3')">OVERLAP ANALYSIS</button>
+      <div id="f3" class="finding-card">
+        <b>ANALYSIS:</b> XML logs confirm paths and recent exfiltration servers matching Wireshark data.
+      </div>
+    </div>
 
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href').includes(current)) {
-                    link.classList.add('active');
-                }
-            });
-        });
-    </script>
+    <div id="infrastructure" class="section">
+      <h2>Actor Infrastructure</h2>
+      <p>Analysis of the exfiltration destination (Hack Back permissions granted).</p>
+      <div class="terminal">
+        AUTH_HASH: V2hvTkxDaXNUaGlzIT8y<br>
+        REMOTE_HOME: /home/threatactor
+      </div>
+      <button class="btn" onclick="toggleFinding('f4')">DECODE CREDENTIALS</button>
+      <div id="f4" class="finding-card">
+        <b>USERNAME:</b> threatactor<br>
+        <b>STATUS:</b> Identity confirmed on DigitalOcean exfiltration box.
+      </div>
+    </div>
+  </main>
+
+  <aside class="glossary">
+    <h3>DATA_GLOSSARY</h3>
+    <div class="term">
+      <b>RETR</b>
+      The FTP command used to retrieve a copy of a file from the server to the client.
+    </div>
+    <div class="term">
+      <b>PASV Mode</b>
+      Passive mode where the server "listens" for a data connection from the client, often used to bypass firewalls.
+    </div>
+    <div class="term">
+      <b>Base64</b>
+      A binary-to-text encoding scheme used to represent data in an ASCII string format.
+    </div>
+    <div class="term">
+      <b>Telemetry</b>
+      The collection of data from remote points for monitoring and analysis.
+    </div>
+  </aside>
+</div>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function toggleFinding(id) {
+    document.getElementById(id).classList.toggle('show');
+  }
+</script>
+
 </body>
 </html>
