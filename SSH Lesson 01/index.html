@@ -1,1 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSH Administration: NLC-SERVER — Lab 01</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&family=Inconsolata&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #0f1319;
+    --panel: #141920;
+    --border: #1e2a38;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --text: #c8d8e8;
+    --muted: #5a7080;
+    --header-font: 'Rajdhani', sans-serif;
+    --mono: 'Share Tech Mono', monospace;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inconsolata', monospace;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: " ";
+    display: block;
+    position: fixed;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+  }
+
+  header {
+    padding: 40px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .container { display: flex; min-height: 100vh; }
+
+  nav {
+    width: 280px;
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    background: var(--surface);
+  }
+
+  .nav-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .nav-item:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-item.active { background: var(--panel); border-color: var(--accent); color: var(--accent); }
+
+  main { flex: 1; padding: 60px; max-width: 900px; }
+
+  .section { display: none; }
+  .section.active { display: block; animation: fadeIn 0.5s ease-out; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  h1, h2 { font-family: var(--header-font); text-transform: uppercase; letter-spacing: 2px; }
+  h1 { color: var(--accent); font-size: 3rem; margin-bottom: 10px; }
+  h2 { font-size: 1.5rem; margin-bottom: 24px; display: flex; align-items: center; gap: 15px; }
+  h2::before { content: ">"; color: var(--accent); }
+
+  .terminal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 14px;
+    margin: 20px 0;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  .terminal::after {
+    content: "LOG_DATA_STREAMS";
+    position: absolute;
+    top: -10px; right: 20px;
+    background: var(--bg);
+    padding: 0 10px;
+    font-size: 10px;
+    color: var(--accent);
+  }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 20px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 10px;
+  }
+
+  .btn:hover { background: var(--accent); color: var(--bg); box-shadow: 0 0 15px var(--accent); }
+
+  .finding-card {
+    display: none;
+    margin-top: 15px;
+    padding: 15px;
+    border-left: 2px solid var(--accent2);
+    background: rgba(255, 77, 109, 0.05);
+  }
+
+  .finding-card.show { display: block; }
+
+  .glossary {
+    width: 300px;
+    padding: 20px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  .glossary h3 { font-family: var(--header-font); color: var(--accent); margin-bottom: 15px; }
+  .term { margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .term b { color: var(--accent); display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-family: var(--mono); color: var(--accent); font-size: 12px; margin-bottom: 10px;">// SYSTEM_STATUS: REMOTE_ADMIN_ACTIVE</div>
+  <h1>SSH LAB 01: NLC-SERVER</h1>
+</header>
+
+<div class="container">
+  <nav>
+    <div class="nav-item active" onclick="showSection('intro')">01_OBJECTIVES</div>
+    <div class="nav-item" onclick="showSection('connection')">02_ESTABLISH_CONNECTION</div>
+    <div class="nav-item" onclick="showSection('admin')">03_REMOTE_ADMIN</div>
+    <div class="nav-item" onclick="showSection('traffic')">04_TRAFFIC_ANALYSIS</div>
+  </nav>
+
+  <main>
+    <div id="intro" class="section active">
+      <h2>Learning Objectives</h2>
+      <p>Master the implementation and troubleshooting of Secure Shell (SSH) for remote server management.</p>
+      <ul style="margin: 20px 0; color: var(--muted); line-height: 2;">
+        <li>Review SSH syntax for successful endpoint connection.</li>
+        <li>Utilize SSH in standard Admin activities.</li>
+        <li>Troubleshoot SSH implementation failures.</li>
+      </ul>
+    </div>
+
+    <div id="connection" class="section">
+      <h2>Initial Connection</h2>
+      <p>Attempt to establish a session with the NLC-SERVER device.</p>
+      <div class="terminal">
+        TARGET: NLC-SERVER<br>
+        USER: NLC_User<br>
+        PASS: Password1<br>
+        IP: 192.168.2.220
+      </div>
+      <button class="btn" onclick="toggleFinding('f1')">REVEAL INSTRUCTOR KEY</button>
+      <div id="f1" class="finding-card">
+        <b>COMMAND:</b> ssh NLC_User@192.168.2.220<br><br>
+        <b>ROADBLOCKS:</b> SSH service is likely OFF. Use Windows Services to enable the SSH service to allow functionality.
+      </div>
+    </div>
+
+    <div id="admin" class="section">
+      <h2>Administrative Actions</h2>
+      <p>Document the commands necessary to modify users and retrieve sensitive data.</p>
+      <div class="terminal">
+        TASK_01: Create new user account<br>
+        TASK_02: Add user to Local Administrators<br>
+        TASK_03: Download C:\Credentials.txt
+      </div>
+      <button class="btn" onclick="toggleFinding('f2')">REVEAL ADMIN COMMANDS</button>
+      <div id="f2" class="finding-card">
+        <b>PERMISSIONS ISSUE:</b> User creation and group modification will fail due to insufficient privileges.<br><br>
+        <b>DATA RETRIEVAL:</b> <br>
+        - Terminal: <i>type C:\Credentials.txt</i><br>
+        - SCP (External): <i>scp NLC_User@192.168.2.220:\C:\Credentials.txt .</i>
+      </div>
+    </div>
+
+    <div id="traffic" class="section">
+      <h2>Wireshark Telemetry</h2>
+      <p>Analyze packet captures to determine if SSH traffic remains secure during the previous steps.</p>
+      <div class="terminal">
+        PROTOCOL: SSHv2<br>
+        CIPHER: AES-GCM<br>
+        ANALYSIS_TOOL: Wireshark
+      </div>
+      <button class="btn" onclick="toggleFinding('f3')">REVEAL PACKET FINDINGS</button>
+      <div id="f3" class="finding-card">
+        <b>VISIBILITY STATUS:</b><br>
+        - Login Activity: NOTHING (Encrypted)<br>
+        - User Creation: NOTHING (Encrypted)<br>
+        - File Download: NOTHING (Encrypted)
+      </div>
+    </div>
+  </main>
+
+  <aside class="glossary">
+    <h3>DATA_GLOSSARY</h3>
+    <div class="term">
+      <b>SSH (Secure Shell)</b>
+      A cryptographic network protocol for operating network services securely over an unsecured network.
+    </div>
+    <div class="term">
+      <b>Port 22</b>
+      The default network port assigned for SSH traffic.
+    </div>
+    <div class="term">
+      <b>SCP (Secure Copy)</b>
+      A means of securely transferring computer files between a local host and a remote host.
+    </div>
+    <div class="term">
+      <b>Encrypted</b>
+      The process of converting information or data into a code, especially to prevent unauthorized access.
+    </div>
+  </aside>
+</div>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function toggleFinding(id) {
+    document.getElementById(id).classList.toggle('show');
+  }
+</script>
+
+</body>
+</html>
